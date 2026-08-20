@@ -355,8 +355,20 @@ export const L3_4: LevelSchema = {
   gadgets: [
     // TODO: placeholder pending real test ELF (see levels.md 待辦: L3-4 的
     // gadget 清單內容，需從實際編出來的 vulnerable binary 掃出可用 gadget)
-    { id: "g1", address: "0x10120", description: "pop a0, a1, a2; ret" },
-    { id: "g2", address: "0x10148", description: "pop a7; ret" },
+    // RISC-V 沒有 pop/push——這裡改用真實會出現的 load-from-stack 慣用法：
+    // lw 從 sp 相對位址搬值進參數暫存器，再 addi sp, sp, N 把用掉的空間還回
+    // 去，最後 ret（jalr x0, ra, 0 的偽指令）跳下一個 gadget。
+    {
+      id: "g1",
+      address: "0x10120",
+      description:
+        "lw a0, 0(sp); lw a1, 4(sp); lw a2, 8(sp); addi sp, sp, 12; ret",
+    },
+    {
+      id: "g2",
+      address: "0x10148",
+      description: "lw a7, 0(sp); addi sp, sp, 4; ret",
+    },
     { id: "g3", address: "0x10160", description: "ecall; ret" },
     { id: "g4", address: "0x10188", description: "mv a0, sp; ret" },
   ],
