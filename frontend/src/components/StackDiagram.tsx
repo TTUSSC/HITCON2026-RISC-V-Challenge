@@ -127,6 +127,14 @@ export function StackDiagram(props: StackDiagramProps) {
       <div className="stack-diagram-body">
         {regions.map((region) => {
           const rowCount = Math.ceil(region.size / BYTES_PER_ROW);
+          // Built low-to-high (rowIdx 0 = the region's lowest byte offset),
+          // then reversed so the DOM (and .stack-region-cells' plain
+          // top-to-bottom column flex) renders the highest-offset row
+          // first/top and the lowest-offset row last/bottom — matching the
+          // outer `regions.reverse()` convention (low address at the
+          // bottom of the whole diagram). Without this, each region's own
+          // rows filled top-to-bottom while the diagram overall was
+          // supposed to read bottom-to-top.
           const rows = Array.from({ length: rowCount }, (_, rowIdx) => {
             const rowStartByte = region.start + rowIdx * BYTES_PER_ROW;
             const rowByteCount = Math.min(
@@ -134,7 +142,7 @@ export function StackDiagram(props: StackDiagramProps) {
               region.size - rowIdx * BYTES_PER_ROW,
             );
             return { rowStartByte, rowByteCount };
-          });
+          }).reverse();
 
           const isDetected = region.kind === "canary" && canaryDetected;
 

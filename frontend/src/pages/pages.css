@@ -2,9 +2,11 @@
    (chunky 3D-press cards/buttons, warm palette, Fredoka/Nunito). */
 
 .entry-page {
+  width: 100%;
   max-width: 36rem;
   margin: 3rem auto;
   padding: 0 1.2rem;
+  box-sizing: border-box;
   text-align: center;
 }
 
@@ -63,9 +65,11 @@
 }
 
 .level-page-missing {
+  width: 100%;
   max-width: 36rem;
   margin: 3rem auto;
   padding: 0 1.2rem;
+  box-sizing: border-box;
   text-align: center;
 }
 
@@ -199,9 +203,11 @@
    up top, brief club intro at the bottom. Same card language as the rest of
    the app (large radius, --border outlines). */
 .about-page {
+  width: 100%;
   max-width: 36rem;
   margin: 0 auto;
   padding: 1.5rem 1.2rem 2.5rem;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -284,9 +290,11 @@
    (that's normally provided by CheatSheet.css's .cheatsheet-body wrapper in
    the in-lesson overlay). */
 .reference-page {
+  width: 100%;
   max-width: 36rem;
   margin: 0 auto;
   padding: 1.5rem 1.2rem 2.5rem;
+  box-sizing: border-box;
 }
 
 .reference-title {

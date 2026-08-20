@@ -1,9 +1,27 @@
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 120;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 16px 24px;
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
+}
+
+.app-arch-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--sky);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .app-title {
@@ -75,6 +93,14 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  /* Explicit rather than relying on 'normal' resolving to 'stretch' — every
+     page's root div sizes itself to its own content otherwise (About's long
+     paragraphs happened to hit max-width and looked "right" by coincidence;
+     ProfilePage's short lines shrank to ~294px, ReferencePage to ~415px —
+     three different widths for the same 36rem max-width rule). Page-level
+     containers in pages.css still each set width:100% too as a second line
+     of defense. */
+  align-items: stretch;
   color: var(--text-muted);
 }
 

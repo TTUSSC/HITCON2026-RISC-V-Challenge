@@ -5,7 +5,7 @@ import {
   Link,
   useLocation,
 } from "react-router-dom";
-import { CircleUser, Flag, Award } from "lucide-react";
+import { CircleUser, Flag, Award, Cpu } from "lucide-react";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { BottomNav } from "./components/BottomNav";
 import { EntryPage } from "./pages/EntryPage";
@@ -76,6 +76,14 @@ function AppShell() {
   return (
     <>
       <header className="app-header">
+        {/* Duolingo's header always leads with the current course's flag —
+            this app has no course to switch (single RISC-V curriculum), so
+            this is a static brand badge in that same visual slot rather
+            than an interactive control. */}
+        <span className="app-arch-badge" aria-label="RISC-V" title="RISC-V">
+          <Cpu size={16} />
+          RV32
+        </span>
         <HeaderTitle />
         <HeaderProgress />
         <div className="app-header-actions">
