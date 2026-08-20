@@ -621,7 +621,7 @@ export const L2_5C: LevelSchema = {
       judge: { kind: "none" },
       title: "把三塊拼成一條 payload",
       prompt:
-        "L2-5a 找到的 offset、L2-5b 選到的 `win()` 位址，現在要拼成同一條 bytes：\n- 先用 padding 把 buffer 填滿到剛好蓋到 `saved ra` 前一格\n- 中間 `saved s0` 那 4 bytes 值不重要（函式不會再用到它）\n- 最後 4 bytes 換成 `win()` 的位址\n\n寫超過 `saved ra` 邊界的部分，會蓋到更遠的記憶體，反而讓程式在跳轉前就崩潰，所以**順序跟長度都要抓準**。",
+        "L2-5a 找到的 offset（32-byte buffer 填滿＋整個 4-byte `saved s0`，共 36 bytes）、L2-5b 選到的 `win()` 位址，現在要拼成同一條 bytes：\n- 先用 padding 把 32-byte `buffer` **整個填滿**\n- 接著 `saved s0` 那 4 bytes 值不重要（函式不會再用到它），但長度要對，因為它排在 `buffer` 跟 `saved ra` 中間\n- 最後 4 bytes 換成 `win()` 的位址，落在 `saved ra` 的位置\n\n這一步不是拿去打 L2-5a/5b 敘事裡那支「有邊界檢查漏洞的 binary」（那支 binary 目前只存在於敘事，還沒有真的編出來）——而是自己組一支小程式，把這三塊 bytes 依序寫進一塊記憶體，再讀出最後 4 bytes 當成 `ra` 跳過去，藉此驗證「payload 三塊怎麼排」這個技巧本身有沒有抓對。**順序排錯，最後跳的位址就不是 `win()`，程式會跳飛。**",
       // Fully filled through the end of saved ra — the finished payload
       // state this step's drag-order practice is assembling toward.
       stackVisual: {
@@ -634,16 +634,77 @@ export const L2_5C: LevelSchema = {
     },
     {
       widgetType: "drag-order",
+      // Same L2-1/L2-2 pattern: each item contributes real asm, concatenated
+      // in the player's chosen order and assembled into one self-contained
+      // ELF (see DragOrderWidget.tsx) — not a separately-compiled vulnerable
+      // binary (that architecture is deliberately deferred, see
+      // levels.md 待驗證/待辦). Each item advances a running pointer (t1) by
+      // its own chunk size before writing, so the *order* genuinely decides
+      // where each chunk's bytes land in `buf` — not just cosmetic label
+      // order. The trailing "load ra from buf+36, jalr" only reaches
+      // `win-label` (and prints "flag") when win-addr's 4 bytes actually end
+      // up at buf+36, i.e. when the 32-byte padding + 4-byte filler
+      // together precede it — same 32/4/4 layout and same win() address
+      // (0x10074) L2-5a/L2-5b already established, so the three levels'
+      // numbers stay consistent.
       judge: { kind: "emulator", expect: { stdoutContains: "flag" } },
       title: "排出正確的 payload",
       prompt:
-        "拖曳排出 `[padding × offset]` → `[隨便的 saved s0]` → `[win() 位址]` 的正確順序，排對即成為真正丟進 rv32emu 執行的 payload。",
+        "拖曳排出 `[padding × offset]` → `[隨便的 saved s0]` → `[win() 位址]` 的正確順序，排對即成為真正丟進 rv32emu 執行、真的組譯並執行的 payload。",
       items: [
-        { id: "padding", label: "padding × offset（填滿 buffer）" },
-        { id: "fake-s0", label: "隨便的 saved s0" },
-        { id: "win-addr", label: "win() 位址" },
+        {
+          id: "padding",
+          label: "padding × offset（填滿 buffer，32 bytes）",
+          // 8 words x 4 bytes = 32 bytes of don't-care filler at the
+          // current pointer, then advance the pointer past them.
+          asm:
+            "    li t0, 0x41414141\n" +
+            "    sw t0, 0(t1)\n" +
+            "    sw t0, 4(t1)\n" +
+            "    sw t0, 8(t1)\n" +
+            "    sw t0, 12(t1)\n" +
+            "    sw t0, 16(t1)\n" +
+            "    sw t0, 20(t1)\n" +
+            "    sw t0, 24(t1)\n" +
+            "    sw t0, 28(t1)\n" +
+            "    addi t1, t1, 32",
+        },
+        {
+          id: "fake-s0",
+          label: "隨便的 saved s0（don't-care，4 bytes）",
+          asm: "    li t0, 0x42424242\n    sw t0, 0(t1)\n    addi t1, t1, 4",
+        },
+        {
+          id: "win-addr",
+          // Canon win() address from L2-5b (0x10074).
+          label: "win() 位址",
+          asm: "    la t0, win_label\n    sw t0, 0(t1)\n    addi t1, t1, 4",
+        },
       ],
       correctOrder: ["padding", "fake-s0", "win-addr"],
+      // t1 is the running write pointer each item advances past its own
+      // chunk; t2 stays pinned to buf's start so the trailing "read back
+      // ra" below always inspects a fixed offset (buf+36) regardless of
+      // how t1 ended up moving.
+      asmPrefix: "_start:\n    la t1, buf\n    mv t2, t1\n",
+      // Read back the last 4 bytes written (buf+36) as if it were the
+      // clobbered `ra`, then "return" through it — only lands on
+      // win_label when the drag order actually put win-addr's bytes there.
+      asmSuffix:
+        "\n    lw ra, 36(t2)\n" +
+        "    jalr x0, ra, 0\n" +
+        "win_label:\n" +
+        "    la a1, flag_msg\n" +
+        "    li a2, 5\n" +
+        "    li a0, 1\n" +
+        "    li a7, 64\n" +
+        "    ecall\n" +
+        "    li a0, 0\n" +
+        "    li a7, 93\n" +
+        "    ecall\n" +
+        ".data\n" +
+        'flag_msg: .ascii "flag\\n"\n' +
+        "buf: .space 40\n",
     },
   ],
 };
