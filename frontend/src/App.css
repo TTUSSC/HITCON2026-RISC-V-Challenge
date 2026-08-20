@@ -1,12 +1,17 @@
 .app-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   padding: 16px 24px;
   border-bottom: 1px solid var(--border);
 }
 
 .app-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-display);
   font-weight: 600;
   color: var(--text);
@@ -21,10 +26,31 @@
   color: var(--rice-deep);
 }
 
+/* Top info row — compact, real progress data (see App.tsx's HeaderProgress).
+   Sits between the title and the profile/theme icons, so it must stay tight
+   on a 375-420px viewport: no labels, just icon + number pairs. */
+.app-header-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.app-header-progress-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
 .app-header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .header-icon-btn {
@@ -50,4 +76,11 @@
   display: flex;
   flex-direction: column;
   color: var(--text-muted);
+}
+
+/* Reserves space for the fixed BottomNav (see components/BottomNav.css) so
+   page content doesn't render underneath it — applied whenever the nav is
+   showing (App.tsx's AppShell decides that per-route). */
+.app-main-with-nav {
+  padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
 }

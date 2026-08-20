@@ -1,0 +1,43 @@
+/* Bottom sticky nav — token-driven, same visual language as the app header
+   (see App.css's .app-header). Fixed to the viewport bottom, above ordinary
+   page content but below the cheat-sheet overlay (z-index: 150) and other
+   modal-style overlays (PassMoment/LevelCompleteCard), none of which render
+   on the routes this nav appears on anyway. */
+
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  background: var(--bg-raised);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 4px 6px;
+  text-decoration: none;
+  color: var(--text-muted);
+  border-top: 3px solid transparent;
+}
+
+.bottom-nav-item-active {
+  color: var(--sky-deep);
+  border-top-color: var(--sky);
+}
+
+.bottom-nav-label {
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 600;
+}

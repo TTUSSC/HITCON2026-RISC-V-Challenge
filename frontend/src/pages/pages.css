@@ -157,10 +157,142 @@
   transition: width 0.3s ease;
 }
 
+/* Cheat-sheet trigger — right side of the topbar, opposite the X, so it
+   doesn't compete with the progress bar for space. See CheatSheet.tsx. */
+.lesson-cheatsheet-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--sky-deep);
+  border-radius: 999px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.lesson-cheatsheet-btn:hover {
+  background: var(--bg-sunken);
+  color: var(--sky-shadow);
+}
+
 .lesson-body {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   padding: 0.5rem 0 6rem;
+}
+
+/* About page ("/about") — repo owner's two-part scope: platform description
+   up top, brief club intro at the bottom. Same card language as the rest of
+   the app (large radius, --border outlines). */
+.about-page {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.2rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.about-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  margin: 0 0 0.75rem;
+}
+
+.about-body {
+  margin: 0 0 0.9rem;
+  color: var(--text);
+  line-height: 1.7;
+}
+
+.about-body:last-child {
+  margin-bottom: 0;
+}
+
+/* Upstream open-source credit (rv32emu / jserv) — smaller and quieter than
+   the main description paragraphs, real links not a name-drop. */
+.about-credit {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.about-credit a {
+  color: var(--sky-deep);
+  font-weight: 600;
+}
+
+.about-body code {
+  color: var(--sky-deep);
+}
+
+.about-club-section {
+  padding: 1.2rem;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+}
+
+.about-club-heading {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  margin: 0 0 0.75rem;
+}
+
+.about-club-quote {
+  font-style: italic;
+  color: var(--text);
+}
+
+.about-club-attribution {
+  margin: 0.4rem 0 0.9rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.about-club-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--sky-deep);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.about-club-link:hover {
+  text-decoration: underline;
+}
+
+/* Reference page ("/reference") — full-page version of the in-lesson
+   cheat sheet, reusing CheatSheetContent as-is (see ReferencePage.tsx). The
+   overlay-specific chrome classes (cheatsheet-overlay/sheet/header) aren't
+   used here, only .cheatsheet-content's inner sections/tables, which is why
+   this block supplies the layout .cheatsheet-content itself doesn't carry
+   (that's normally provided by CheatSheet.css's .cheatsheet-body wrapper in
+   the in-lesson overlay). */
+.reference-page {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.2rem 2.5rem;
+}
+
+.reference-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  color: var(--sky-deep);
+  margin: 0 0 1.2rem;
+}
+
+.reference-page .cheatsheet-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
 }
