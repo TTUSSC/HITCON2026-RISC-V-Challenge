@@ -441,3 +441,14 @@ export function branchKeyForLevel(
   if (levelId.startsWith("L3-")) return "Boss";
   return undefined;
 }
+
+// First level id for each entry point (mirrors EntryPage.tsx's option list)
+// — used by MapPage to figure out where in the overall `levels` chain a
+// session's progress should be measured from, so an L2 entrant's map never
+// gets misread as "stuck at L0-1" just because L0/L1 levels were never
+// entered.
+export const entryFirstLevelId: Record<string, string> = {
+  L0: "L0-1",
+  L1: "L1-1",
+  L2: "L2-0",
+};

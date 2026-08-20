@@ -15,6 +15,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.node.locked {
+  cursor: not-allowed;
 }
 
 .bubble {
@@ -69,12 +78,4 @@
 .bubble .icon {
   width: 26px;
   height: 26px;
-}
-
-/* Extra ring on top of the .current styling when this node is the one
-   actually being played right now (distinct from "next unlocked" — those
-   coincide most of the time, but not if the player navigates back). */
-.node[data-viewing="true"] .bubble {
-  outline: 3px solid var(--sky-deep);
-  outline-offset: 3px;
 }

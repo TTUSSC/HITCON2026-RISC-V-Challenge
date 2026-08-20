@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { X } from "lucide-react";
 import { LevelPlayer } from "../engine/LevelPlayer";
 import {
   levelsById,
@@ -14,7 +15,6 @@ import {
 } from "../engine/levels";
 import { useSessionStore } from "../engine/sessionStore";
 import type { LevelSchema } from "../engine/types";
-import { PathMap } from "../components/PathMap";
 import { PassMoment } from "../components/PassMoment";
 import "./pages.css";
 
@@ -79,7 +79,9 @@ export function LevelPage() {
 
   const goTo = (nextLevelId: string | null) => {
     if (nextLevelId === null) {
-      navigate("/");
+      // Whole chain cleared — back to the map, which now shows every node
+      // in the final segment as done.
+      navigate("/path");
       return;
     }
     navigate(`/level/${nextLevelId}`);
@@ -115,15 +117,40 @@ export function LevelPage() {
     goTo(nextLevelId);
   };
 
+  // Slim progress bar in the top bar reflects position within the branch
+  // segment (Duolingo convention) — not per-widget progress, which most
+  // levels here don't have (single-question levels).
   const branchKey = branchKeyForLevel(schema.id);
-  const pathLevelIds = branchKey ? branchLevelIds[branchKey] : [];
+  const pathLevelIds: string[] = branchKey
+    ? [...branchLevelIds[branchKey]]
+    : [];
+  const indexInSegment = pathLevelIds.indexOf(schema.id);
+  const progressPercent =
+    pathLevelIds.length > 0 && indexInSegment >= 0
+      ? ((indexInSegment + 1) / pathLevelIds.length) * 100
+      : 100;
 
   return (
-    <div className="level-page">
-      {pathLevelIds.length > 0 && (
-        <PathMap levelIds={[...pathLevelIds]} currentLevelId={schema.id} />
-      )}
-      <LevelPlayer schema={schema} onAdvance={handleAdvance} />
+    <div className="lesson-page">
+      <div className="lesson-topbar">
+        <button
+          type="button"
+          className="lesson-close-btn"
+          onClick={() => navigate("/path")}
+          aria-label="回到地圖"
+        >
+          <X size={22} />
+        </button>
+        <div className="lesson-progress-track">
+          <div
+            className="lesson-progress-fill"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
+      <div className="lesson-body">
+        <LevelPlayer schema={schema} onAdvance={handleAdvance} />
+      </div>
       {passInfo && (
         <PassMoment
           message={passInfo.message}

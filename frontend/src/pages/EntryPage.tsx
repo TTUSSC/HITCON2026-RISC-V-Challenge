@@ -47,7 +47,9 @@ export function EntryPage() {
 
   const handleSelect = (option: EntryOption) => {
     setEntryPoint(option.entryPoint);
-    navigate(`/level/${option.firstLevelId}`);
+    // Land on the map first (Duolingo-style home screen), not straight into
+    // the first question — the map is where a session picks where to start.
+    navigate("/path");
   };
 
   return (

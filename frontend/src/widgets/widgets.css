@@ -4,13 +4,16 @@
    when the visual identity changes, widget DOM/logic doesn't. */
 
 .widget {
+  width: 100%;
   max-width: 32rem;
-  margin: 2rem auto;
-  padding: 24px;
-  border-radius: 20px;
+  margin: auto;
+  padding: 1.4rem 1.5rem;
+  border-radius: 22px;
   background: var(--bg-raised);
-  border: 1px solid var(--border);
+  border: 3px solid var(--border);
+  box-shadow: 0 6px 0 -2px var(--border);
   color: var(--text);
+  box-sizing: border-box;
 }
 
 .widget h2 {
@@ -57,40 +60,60 @@
   transform: none;
 }
 
-.fill-blank-row {
-  margin-bottom: 16px;
+/* Duolingo convention: the lesson screen's main action button is pinned
+   full-width to the bottom of the viewport, not inline with the card. Only
+   the widget's own primary CTA gets this treatment (scoped to a direct
+   child of .widget rendered inside the lesson body) — PassMoment's
+   "繼續" button also uses .widget-primary-btn but lives in its own overlay
+   card, so it's unaffected by this selector. */
+.lesson-body .widget > .widget-primary-btn {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 1rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
+  border-radius: 0;
+  font-size: 1.05rem;
+  border-bottom-width: 5px;
 }
 
-.fill-blank-id {
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: var(--sky-deep);
-  margin-bottom: 6px;
+.lesson-body .widget > .widget-primary-btn:active {
+  border-bottom-width: 2px;
+  transform: translateY(3px);
+}
+
+.fill-blank-row {
+  margin-bottom: 16px;
 }
 
 .fill-blank-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 0.6rem;
 }
 
 .fill-blank-options button {
-  font-family: var(--font-body);
-  font-weight: 600;
-  padding: 8px 14px;
-  border-radius: 10px;
-  border: 2px solid var(--border);
-  background: var(--bg);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.88rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 14px;
+  border: 2.5px solid var(--border);
+  border-bottom: 4px solid var(--border);
+  background: var(--bg-sunken);
   color: var(--text);
   cursor: pointer;
 }
 
 .fill-blank-options button[aria-pressed="true"] {
-  border-color: var(--sky-deep);
-  background: var(--sky);
-  color: #fff;
+  border-color: var(--rice);
+  border-bottom-color: var(--rice-shadow);
+  background: var(--cream-2);
+  color: var(--rice-shadow);
 }
 
 /* Secondary button — same 3D-press language as .widget-primary-btn, sky

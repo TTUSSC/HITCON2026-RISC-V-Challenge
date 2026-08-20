@@ -62,12 +62,6 @@
   font-size: 0.9rem;
 }
 
-.level-page {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
 .level-page-missing {
   max-width: 28rem;
   margin: 3rem auto;
@@ -77,4 +71,75 @@
 
 .level-page-missing code {
   color: var(--coral-deep);
+}
+
+/* Map/home screen ("/path") — Duolingo's home screen: just the path, full
+   focus, nothing else. The persistent app-header (title + theme toggle)
+   lives above this in App.tsx. */
+.map-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 0.5rem 0 2.5rem;
+}
+
+/* Lesson/question screen ("/level/:levelId") — Duolingo's actual lesson
+   layout: a slim top bar (close + progress), full-screen focused question
+   content, nothing else visible from the map. */
+.lesson-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.lesson-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1.2rem;
+}
+
+.lesson-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 999px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.lesson-close-btn:hover {
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+
+.lesson-progress-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.lesson-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--mint);
+  transition: width 0.3s ease;
+}
+
+.lesson-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 0.5rem 0 6rem;
 }

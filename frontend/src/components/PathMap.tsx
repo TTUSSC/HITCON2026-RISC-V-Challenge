@@ -13,15 +13,18 @@ import "./PathMap.css";
 export interface PathMapProps {
   /** Ordered level ids for the branch/segment currently being displayed. */
   levelIds: string[];
-  /** The level currently being played (used for the alternating offset key). */
-  currentLevelId: string;
   /** Short captions keyed by level id (falls back to the id itself). */
   captions?: Record<string, string>;
+  /**
+   * Called when a reachable (done/current) node is tapped. Locked nodes
+   * never call this — they're rendered disabled instead.
+   */
+  onSelectLevel?: (levelId: string) => void;
 }
 
 type NodeState = "done" | "current" | "locked";
 
-export function PathMap({ levelIds, currentLevelId, captions }: PathMapProps) {
+export function PathMap({ levelIds, captions, onSelectLevel }: PathMapProps) {
   const events = useSessionStore((s) => s.events);
   const passedIds = new Set(
     events.filter((e) => e.passedAt !== undefined).map((e) => e.levelId),
@@ -44,9 +47,11 @@ export function PathMap({ levelIds, currentLevelId, captions }: PathMapProps) {
       {nodes.map((node, i) => (
         <Fragment key={node.id}>
           {i > 0 && <div className="connector" />}
-          <div
+          <button
+            type="button"
             className={`node ${node.state}`}
-            data-viewing={node.id === currentLevelId || undefined}
+            disabled={node.state === "locked"}
+            onClick={() => onSelectLevel?.(node.id)}
             style={{
               marginLeft: i % 2 === 1 ? "1.4rem" : undefined,
               marginRight: i % 2 === 0 ? "1.4rem" : undefined,
@@ -62,7 +67,7 @@ export function PathMap({ levelIds, currentLevelId, captions }: PathMapProps) {
               )}
             </div>
             <div className="caption">{captions?.[node.id] ?? node.id}</div>
-          </div>
+          </button>
         </Fragment>
       ))}
     </div>
