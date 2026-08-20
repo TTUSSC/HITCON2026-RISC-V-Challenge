@@ -1,0 +1,64 @@
+/* Pass-moment card — ported verbatim from the approved style demo (see task
+   spec). Rendered as a centered overlay so it works as a modal-ish "beat"
+   between passing a level and navigating to the next one. */
+
+.pass-moment-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 100;
+}
+
+.pass-card {
+  background: var(--bg-raised);
+  border: 3px solid var(--mint);
+  border-radius: 24px;
+  padding: 1.6rem;
+  display: flex;
+  align-items: center;
+  gap: 1.3rem;
+  max-width: 26rem;
+}
+
+.pass-card .icon svg {
+  display: block;
+  width: 68px;
+  height: 68px;
+}
+
+.pass-card-body {
+  min-width: 0;
+}
+
+.pass-card h3 {
+  font-family: var(--font-display);
+  margin: 0 0 0.2rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.pass-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.pass-card .code {
+  margin-top: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--mint-deep);
+  background: var(--cream-2);
+  padding: 0.15rem 0.5rem;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.pass-card .widget-primary-btn {
+  margin-top: 0.9rem;
+}

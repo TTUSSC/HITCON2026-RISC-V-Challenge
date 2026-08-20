@@ -1,0 +1,80 @@
+/* Bubble/zigzag level path — ported verbatim from the approved style demo
+   (see task spec). Alternating left/right offset is applied inline per node
+   index in PathMap.tsx rather than via :nth-child, since the node list is
+   dynamic. */
+
+.path {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 1rem 0;
+}
+
+.node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bubble {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.4rem;
+  border-bottom: 5px solid transparent;
+  color: #fff;
+}
+
+.node.done .bubble {
+  background: var(--mint);
+  border-bottom-color: var(--mint-shadow);
+}
+
+.node.current .bubble {
+  background: var(--rice);
+  border-bottom-color: var(--rice-shadow);
+  width: 76px;
+  height: 76px;
+  box-shadow: 0 0 0 5px var(--cream-2);
+}
+
+.node.locked .bubble {
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+  border-bottom-color: var(--border);
+}
+
+.node .caption {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.4rem;
+  font-weight: 700;
+  text-align: center;
+  max-width: 100px;
+}
+
+.connector {
+  width: 5px;
+  height: 34px;
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.bubble .icon {
+  width: 26px;
+  height: 26px;
+}
+
+/* Extra ring on top of the .current styling when this node is the one
+   actually being played right now (distinct from "next unlocked" — those
+   coincide most of the time, but not if the player navigates back). */
+.node[data-viewing="true"] .bubble {
+  outline: 3px solid var(--sky-deep);
+  outline-offset: 3px;
+}
