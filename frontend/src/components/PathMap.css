@@ -104,3 +104,12 @@
   width: 14px;
   height: 14px;
 }
+
+/* Locked/current node that grants a reward once passed — same badge shape
+   as the earned one, muted so it reads as "waiting" rather than "done". */
+.reward-badge-pending {
+  background: var(--bg-sunken);
+  border-color: var(--border);
+  box-shadow: none;
+  color: var(--text-muted);
+}

@@ -25,3 +25,14 @@ export function getOrCreateProfileId(): string {
   localStorage.setItem(STORAGE_KEY, created);
   return created;
 }
+
+// "刪除帳號" — a fresh identity replaces the old one going forward. Old
+// local data tied to the previous id (if a backend existed) would just be
+// orphaned, same as deleting an account normally leaves no trace client-side.
+export function regenerateProfileId(): string {
+  const created = generateId();
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(STORAGE_KEY, created);
+  }
+  return created;
+}

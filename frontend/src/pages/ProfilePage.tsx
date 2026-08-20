@@ -5,8 +5,15 @@
 // current entry branch. No accounts, nothing persisted beyond sessionStore.
 
 import { useState } from "react";
-import { Award, ArrowLeft, Pencil, Check } from "lucide-react";
-import { Link } from "react-router-dom";
+import {
+  Award,
+  ArrowLeft,
+  Pencil,
+  Check,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { useSessionStore } from "../engine/sessionStore";
 import { levels, BRANCH_TITLES } from "../engine/levels";
 import type { RewardKind } from "../engine/types";
@@ -20,13 +27,67 @@ const REWARD_LABELS: Record<RewardKind, string> = {
   "ttussc-merch": "TTUSSC 周邊",
 };
 
+// Three stages before anything destructive actually happens, per the repo
+// owner's explicit ask — a native `confirm()` would be one native dialog and
+// look out of place; this instead: (1) plain button "清空"/"刪除", (2) a
+// second click arms it, swapping the label to an explicit "確定..." state,
+// (3) a third click opens a real modal (onRequestConfirm below) where the
+// action only fires if the player confirms there too. Arming resets on blur
+// — deliberately simple, good enough for a booth kiosk where a stray second
+// tap is unlikely.
+function DangerButton({
+  icon: Icon,
+  label,
+  confirmLabel,
+  onRequestConfirm,
+}: {
+  icon: typeof Trash2;
+  label: string;
+  confirmLabel: string;
+  onRequestConfirm: () => void;
+}) {
+  const [armed, setArmed] = useState(false);
+  return (
+    <button
+      type="button"
+      className={`profile-danger-btn${armed ? " profile-danger-btn-armed" : ""}`}
+      onClick={() => {
+        if (armed) {
+          onRequestConfirm();
+          setArmed(false);
+        } else {
+          setArmed(true);
+        }
+      }}
+      onBlur={() => setArmed(false)}
+    >
+      <Icon size={16} />
+      {armed ? confirmLabel : label}
+    </button>
+  );
+}
+
+interface DangerModalContent {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+}
+
 export function ProfilePage() {
+  const navigate = useNavigate();
   const entryPoint = useSessionStore((s) => s.entryPoint);
   const profileId = useSessionStore((s) => s.profileId);
   const displayName = useSessionStore((s) => s.displayName);
   const setDisplayName = useSessionStore((s) => s.setDisplayName);
   const events = useSessionStore((s) => s.events);
   const rewards = useSessionStore((s) => s.rewards);
+  const resetProgress = useSessionStore((s) => s.resetProgress);
+  const deleteProfile = useSessionStore((s) => s.deleteProfile);
+
+  const [dangerModal, setDangerModal] = useState<DangerModalContent | null>(
+    null,
+  );
 
   // Inline-edit, not a modal — same "just a field on the page" weight as the
   // rest of this local-only profile (no accounts, nothing to confirm with a
@@ -152,6 +213,59 @@ export function ProfilePage() {
         )}
       </section>
 
+      <section className="profile-section">
+        <h2 className="profile-section-heading profile-danger-heading">
+          危險操作
+        </h2>
+        <div className="profile-danger-zone">
+          <div className="profile-danger-row">
+            <div className="profile-danger-copy">
+              <span className="profile-danger-title">清空關卡紀錄</span>
+              <span className="profile-danger-desc">
+                重置所有關卡的通關進度，暱稱和獎勵不受影響。適合想重刷速度的人。
+              </span>
+            </div>
+            <DangerButton
+              icon={RotateCcw}
+              label="清空"
+              confirmLabel="確定清空？"
+              onRequestConfirm={() =>
+                setDangerModal({
+                  title: "清空關卡紀錄？",
+                  body: "所有關卡的通關進度會重置，暱稱和已獲得的獎勵不受影響。這個動作無法復原。",
+                  confirmLabel: "清空紀錄",
+                  onConfirm: resetProgress,
+                })
+              }
+            />
+          </div>
+          <div className="profile-danger-row">
+            <div className="profile-danger-copy">
+              <span className="profile-danger-title">刪除帳號</span>
+              <span className="profile-danger-desc">
+                清除暱稱、進度與獎勵，並回到入口重新開始，無法復原。
+              </span>
+            </div>
+            <DangerButton
+              icon={Trash2}
+              label="刪除"
+              confirmLabel="確定刪除？"
+              onRequestConfirm={() =>
+                setDangerModal({
+                  title: "刪除帳號？",
+                  body: "暱稱、進度與獎勵都會被清除，並回到入口重新開始。這個動作無法復原。",
+                  confirmLabel: "刪除帳號",
+                  onConfirm: () => {
+                    deleteProfile();
+                    navigate("/");
+                  },
+                })
+              }
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Stable per-browser id (engine/profileId.ts) — no backend to submit
           to yet, but shown so a player can quote it to staff if one ever
           gets wired up, and so this identity isn't invisible/undiscoverable
@@ -159,6 +273,48 @@ export function ProfilePage() {
       <p className="profile-id-footer" title={profileId}>
         識別碼 {profileId.slice(0, 8)}
       </p>
+
+      {dangerModal && (
+        <div
+          className="profile-danger-modal-overlay"
+          onClick={() => setDangerModal(null)}
+        >
+          <div
+            className="profile-danger-modal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="profile-danger-modal-heading"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              id="profile-danger-modal-heading"
+              className="profile-danger-modal-heading"
+            >
+              {dangerModal.title}
+            </h2>
+            <p className="profile-danger-modal-body">{dangerModal.body}</p>
+            <div className="profile-danger-modal-actions">
+              <button
+                type="button"
+                className="profile-danger-modal-cancel-btn"
+                onClick={() => setDangerModal(null)}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                className="profile-danger-modal-confirm-btn"
+                onClick={() => {
+                  dangerModal.onConfirm();
+                  setDangerModal(null);
+                }}
+              >
+                {dangerModal.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

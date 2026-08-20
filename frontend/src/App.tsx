@@ -3,6 +3,7 @@ import {
   Routes,
   Route,
   Link,
+  Navigate,
   useLocation,
 } from "react-router-dom";
 import { Flag, Award, Cpu } from "lucide-react";
@@ -21,12 +22,13 @@ import "./App.css";
 
 // /path is home (Duolingo convention: EntryPage is one-time onboarding, a
 // player never navigates back to it once they've picked an entry point —
-// repo owner's explicit decision). The header title only becomes a clickable
-// "go home" link once a session has actually started (at least one entered
-// level) — on EntryPage itself, before any pick, there's nothing to go home
-// to yet, so it stays plain text there.
+// repo owner's explicit decision, now enforced by EntryRoute below rather
+// than just being a UI convention). The header title only becomes a
+// clickable "go home" link once onboarding is done — on EntryPage itself,
+// before any pick, there's nothing to go home to yet, so it stays plain
+// text there.
 function HeaderTitle() {
-  const hasStarted = useSessionStore((s) => s.events.length > 0);
+  const hasStarted = useSessionStore((s) => s.onboarded);
   if (!hasStarted) {
     return <span className="app-title">TTUSSC RISC-V Challenge</span>;
   }
@@ -42,7 +44,7 @@ function HeaderTitle() {
 // retention mechanics for this app). Shares HeaderTitle's hasStarted gate:
 // before any level has been entered there's no progress worth showing.
 function HeaderProgress() {
-  const hasStarted = useSessionStore((s) => s.events.length > 0);
+  const hasStarted = useSessionStore((s) => s.onboarded);
   const events = useSessionStore((s) => s.events);
   const rewardCount = useSessionStore((s) => s.rewards.length);
 
@@ -62,6 +64,16 @@ function HeaderProgress() {
       </span>
     </div>
   );
+}
+
+// Blocks re-entry to EntryPage once a profile already exists — visiting "/"
+// again would let someone re-pick an entry point and silently overwrite the
+// existing profile's nickname/entryPoint via the same confirm flow. Once
+// onboarded, "/" always bounces to the map instead.
+function EntryRoute() {
+  const onboarded = useSessionStore((s) => s.onboarded);
+  if (onboarded) return <Navigate to="/path" replace />;
+  return <EntryPage />;
 }
 
 // Bottom nav is hidden on "/" (EntryPage, before a session exists — nothing
@@ -92,7 +104,7 @@ function AppShell() {
       </header>
       <main className={`app-main${showBottomNav ? " app-main-with-nav" : ""}`}>
         <Routes>
-          <Route path="/" element={<EntryPage />} />
+          <Route path="/" element={<EntryRoute />} />
           <Route path="/path" element={<MapPage />} />
           <Route path="/level/:levelId" element={<LevelPage />} />
           <Route path="/profile" element={<ProfilePage />} />

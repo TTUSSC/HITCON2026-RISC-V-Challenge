@@ -142,8 +142,20 @@ export function PathMap({
                   node.id
                 )}
               </motion.div>
-              {node.state === "done" && rewardLevelIds?.has(node.id) && (
-                <div className="reward-badge" title="通關獎勵關卡">
+              {rewardLevelIds?.has(node.id) && (
+                // Shown at every state, not just "done" — a locked/current
+                // node still tells the player a reward is waiting there,
+                // it just renders muted (see .reward-badge-pending in
+                // PathMap.css) instead of the solid gold "already earned"
+                // treatment done nodes get.
+                <div
+                  className={`reward-badge${
+                    node.state === "done" ? "" : " reward-badge-pending"
+                  }`}
+                  title={
+                    node.state === "done" ? "通關獎勵關卡" : "通關可獲得獎勵"
+                  }
+                >
                   <Award className="icon" />
                 </div>
               )}

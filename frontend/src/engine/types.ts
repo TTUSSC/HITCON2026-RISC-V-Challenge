@@ -254,6 +254,10 @@ export interface SessionProgress {
   // yet"; callers fall back to a generic label rather than treating it as
   // required.
   displayName: string;
+  // True once EntryPage's nickname modal has been confirmed at least once —
+  // gates re-entry to "/" (see App.tsx's route guard) so re-visiting the
+  // entry pick can't silently overwrite an already-created profile.
+  onboarded: boolean;
   entryPoint: "L0" | "L1" | "L2";
   events: Array<{
     levelId: string;

@@ -8,7 +8,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { getOrCreateProfileId } from "./profileId";
+import { getOrCreateProfileId, regenerateProfileId } from "./profileId";
 import type { RewardKind, SessionProgress } from "./types";
 
 function generateSessionId(): string {
@@ -20,11 +20,23 @@ function generateSessionId(): string {
 }
 
 export interface SessionStore extends SessionProgress {
-  setEntryPoint: (entryPoint: SessionProgress["entryPoint"]) => void;
+  // Sets entryPoint + displayName + onboarded together, from EntryPage's
+  // nickname-modal confirm — one commit rather than three separate setters
+  // racing (see EntryPage.tsx).
+  completeOnboarding: (
+    entryPoint: SessionProgress["entryPoint"],
+    displayName: string,
+  ) => void;
   setDisplayName: (displayName: string) => void;
   enterLevel: (levelId: string) => void;
   recordPass: (levelId: string) => void;
   grantReward: (kind: RewardKind, levelId: string) => void;
+  // Danger zone, both from ProfilePage. resetProgress clears run history
+  // only (someone wanting to replay for speed); deleteProfile wipes the
+  // profile identity itself, including handing out a fresh profileId, and
+  // drops onboarded back to false so "/" becomes reachable again.
+  resetProgress: () => void;
+  deleteProfile: () => void;
 }
 
 export const useSessionStore = create<SessionStore>()(
@@ -33,11 +45,13 @@ export const useSessionStore = create<SessionStore>()(
       sessionId: generateSessionId(),
       profileId: getOrCreateProfileId(),
       displayName: "",
+      onboarded: false,
       entryPoint: "L0",
       events: [],
       rewards: [],
 
-      setEntryPoint: (entryPoint) => set({ entryPoint }),
+      completeOnboarding: (entryPoint, displayName) =>
+        set({ entryPoint, displayName, onboarded: true }),
       setDisplayName: (displayName) => set({ displayName }),
 
       enterLevel: (levelId) =>
@@ -86,6 +100,18 @@ export const useSessionStore = create<SessionStore>()(
         set((state) => ({
           rewards: [...state.rewards, { kind, grantedAt: Date.now(), levelId }],
         })),
+
+      resetProgress: () => set({ events: [], rewards: [] }),
+
+      deleteProfile: () =>
+        set({
+          profileId: regenerateProfileId(),
+          displayName: "",
+          onboarded: false,
+          entryPoint: "L0",
+          events: [],
+          rewards: [],
+        }),
     }),
     {
       // Key intentionally includes a date stamp so sessions don't bleed

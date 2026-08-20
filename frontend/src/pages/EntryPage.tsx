@@ -45,8 +45,7 @@ const options: EntryOption[] = [
 
 export function EntryPage() {
   const navigate = useNavigate();
-  const setEntryPoint = useSessionStore((s) => s.setEntryPoint);
-  const setDisplayName = useSessionStore((s) => s.setDisplayName);
+  const completeOnboarding = useSessionStore((s) => s.completeOnboarding);
   const [pendingOption, setPendingOption] = useState<EntryOption | null>(null);
   const [nickname, setNickname] = useState("");
 
@@ -56,8 +55,7 @@ export function EntryPage() {
     // still-typing player never sees their input silently rewritten. Empty
     // input just leaves displayName "" — ProfilePage falls back to a
     // generic label rather than forcing a name.
-    setDisplayName(nickname.trim());
-    setEntryPoint(pendingOption.entryPoint);
+    completeOnboarding(pendingOption.entryPoint, nickname.trim());
     // Land on the map first (Duolingo-style home screen), not straight into
     // the first question — the map is where a session picks where to start.
     navigate("/path");
