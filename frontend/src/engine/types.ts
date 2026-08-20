@@ -74,6 +74,16 @@ export interface LeverSliderLevel extends LevelBase {
   min: number;
   max: number;
   target?: number; // absent when judge.kind === 'none' (pure feel, e.g. L3-1)
+  // Optional stack-diagram parameters (StackDiagram component) driven live
+  // by the slider value. Absent -> LeverSliderWidget degrades to a plain
+  // slider (e.g. for a future non-stack-overflow lever-slider level).
+  stackVisual?: {
+    bufferSize: number;
+    mode: "offset" | "canary"; // 'offset' = L2-5a (no canary), 'canary' = L3-1
+    canarySize?: number; // only relevant when mode === 'canary'
+    savedS0Size: number;
+    savedRaSize: number;
+  };
 }
 
 export interface ByteGuesserLevel extends LevelBase {

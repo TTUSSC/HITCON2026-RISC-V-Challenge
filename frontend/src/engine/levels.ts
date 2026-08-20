@@ -221,6 +221,16 @@ export const L2_5A: LevelSchema = {
   max: 64,
   // TODO: placeholder pending real test ELF (see levels.md 待驗證/待辦)
   target: 40,
+  // Stack shape matches the target above: 32-byte buffer + 4-byte saved s0
+  // means offset 36 is where saved ra begins, but the "just right" answer
+  // is framed as "剛好蓋到 ra" so target sits right at that boundary +4
+  // slack; adjust alongside target once the real test ELF lands.
+  stackVisual: {
+    bufferSize: 32,
+    mode: "offset",
+    savedS0Size: 4,
+    savedRaSize: 4,
+  },
   judge: { kind: "direct" },
   onPass: { advance: "L2-5b" },
 };
@@ -292,6 +302,15 @@ export const L3_1: LevelSchema = {
   min: 0,
   max: 64,
   // No target: judge.kind is 'none', this is pure feel (see types.ts).
+  // Same buffer/s0/ra shape as L2-5a, plus a 4-byte canary sitting right
+  // after the buffer — see levels.md Boss section's ASCII stack diagram.
+  stackVisual: {
+    bufferSize: 32,
+    mode: "canary",
+    canarySize: 4,
+    savedS0Size: 4,
+    savedRaSize: 4,
+  },
   judge: { kind: "none" },
   onPass: { advance: "L3-2" },
 };

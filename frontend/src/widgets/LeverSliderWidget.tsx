@@ -10,6 +10,7 @@ import { useState } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import type { WidgetComponent } from "../engine/widgetRegistry";
 import type { LeverSliderLevel } from "../engine/types";
+import { StackDiagram } from "../components/StackDiagram";
 import "./widgets.css";
 
 export const LeverSliderWidget: WidgetComponent<LeverSliderLevel> = ({
@@ -23,6 +24,17 @@ export const LeverSliderWidget: WidgetComponent<LeverSliderLevel> = ({
     <div className="widget widget-lever-slider">
       <h2>{schema.title}</h2>
       <p>{schema.prompt}</p>
+
+      {schema.stackVisual && (
+        <StackDiagram
+          bufferSize={schema.stackVisual.bufferSize}
+          mode={schema.stackVisual.mode}
+          canarySize={schema.stackVisual.canarySize}
+          savedS0Size={schema.stackVisual.savedS0Size}
+          savedRaSize={schema.stackVisual.savedRaSize}
+          fillLength={value}
+        />
+      )}
 
       <div className="lever-slider-readout">{value}</div>
       <input
