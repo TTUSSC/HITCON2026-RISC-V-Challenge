@@ -9,12 +9,18 @@
 //
 // `after` is optional and, when a register appears in both `values` and
 // `after`, renders a before -> after transition inside that one box (e.g.
-// "— -> 3") instead of a single static value — the execution-state visual
+// "5 -> 3") instead of a single static value — the execution-state visual
 // the L0 cognitive-load review asked for (docs/design/cogload-review-L0.md):
 // a worked example or a resolved practice step should show what the real
 // register actually became, not just its final value in isolation. A
 // register present only in `values` (no `after`) still renders as a plain
 // single value, so this is purely additive for existing callers.
+//
+// A box with no known value at all renders empty (no placeholder glyph) —
+// a dash/em-dash character reads as ambiguous next to the Traditional
+// Chinese prose around it (could be misread as punctuation), so "unknown"
+// is communicated purely via the muted, unfilled box styling instead of a
+// character (see RegisterBank.css's `[data-filled]`/`[data-empty]` rules).
 
 import "./RegisterBank.css";
 
@@ -47,17 +53,22 @@ export function RegisterBank({
             }
           >
             <span className="register-box-name">{reg}</span>
-            <span className="register-box-value">
+            <span
+              className="register-box-value"
+              data-empty={(!hasTransition && before === undefined) || undefined}
+            >
               {hasTransition ? (
                 <>
-                  {before !== undefined ? before : "—"}
-                  <span className="register-box-arrow"> → </span>
+                  {before !== undefined && (
+                    <>
+                      {before}
+                      <span className="register-box-arrow"> → </span>
+                    </>
+                  )}
                   {afterValue}
                 </>
-              ) : before !== undefined ? (
-                before
               ) : (
-                "—"
+                before
               )}
             </span>
           </div>

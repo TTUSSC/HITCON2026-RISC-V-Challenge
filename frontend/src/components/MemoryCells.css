@@ -52,6 +52,19 @@
   font-weight: 700;
   font-size: 0.85rem;
   color: var(--text);
+  min-height: 1.2em;
+}
+
+/* Empty cell (no known value) — a muted bar instead of a "—"/"-" glyph,
+   which reads as ambiguous next to surrounding Chinese punctuation. Same
+   convention as RegisterBank.css's `[data-empty]` rule. */
+.memory-cell-value[data-empty="true"]::before {
+  content: "";
+  display: inline-block;
+  width: 0.9em;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--border);
 }
 
 .memory-cell-label {

@@ -404,7 +404,7 @@ export const L0_3: LevelSchema = {
       memoryVisual: {
         baseRegister: "a1",
         baseValue: "→",
-        cells: [{ offset: 0, value: "—" }],
+        cells: [{ offset: 0 }],
         highlightOffset: 0,
         direction: "store",
         targetRegister: "a0",

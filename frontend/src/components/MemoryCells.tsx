@@ -71,8 +71,11 @@ export function MemoryCells({
               data-target={isTarget || undefined}
             >
               <span className="memory-cell-offset">+{cell.offset}</span>
-              <span className="memory-cell-value">
-                {cell.value !== undefined ? cell.value : "—"}
+              <span
+                className="memory-cell-value"
+                data-empty={cell.value === undefined || undefined}
+              >
+                {cell.value}
               </span>
               {cell.label && (
                 <span className="memory-cell-label">{cell.label}</span>

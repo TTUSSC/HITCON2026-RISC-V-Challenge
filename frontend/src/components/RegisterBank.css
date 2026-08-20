@@ -34,6 +34,20 @@
   font-family: var(--font-mono);
   font-size: 0.75rem;
   color: var(--text-muted);
+  min-height: 1em;
+}
+
+/* No known value yet — a short muted bar instead of a "—"/"-" glyph, which
+   reads as ambiguous next to surrounding Chinese punctuation. Purely
+   decorative (aria-hidden isn't needed since the span has no text either
+   way), so it's a ::before rather than real content. */
+.register-box-value[data-empty="true"]::before {
+  content: "";
+  display: inline-block;
+  width: 0.9em;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--border);
 }
 
 .register-box[data-filled="true"] {
