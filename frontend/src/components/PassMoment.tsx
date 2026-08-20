@@ -3,6 +3,8 @@
 // the approved style demo (see task spec) — the rice-cooker shapes are
 // deliberate/approved, do not redesign.
 
+import { useEffect } from "react";
+import confetti from "canvas-confetti";
 import "./PassMoment.css";
 
 export interface PassMomentProps {
@@ -13,7 +15,29 @@ export interface PassMomentProps {
   onContinue: () => void;
 }
 
+// STYLE.md's accent palette, not confetti's library-default colors — this is
+// a booth-scale "重視覺識別" detail: the celebration should still read as
+// this app's palette, not a generic confetti-library green/pink/blue burst.
+const CONFETTI_COLORS = ["#FFB84D", "#5FB8E8", "#4FBF8B", "#FF6B6B"];
+
 export function PassMoment({ message, code, onContinue }: PassMomentProps) {
+  // A single tasteful burst on mount — this is a quick booth interaction,
+  // not a party, so no continuous/looping emitter. Skipped for players who
+  // asked their OS for reduced motion.
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (prefersReducedMotion) return;
+    void confetti({
+      particleCount: 90,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: CONFETTI_COLORS,
+      zIndex: 200,
+    });
+  }, []);
+
   return (
     <div className="pass-moment-overlay">
       <div className="pass-card">
