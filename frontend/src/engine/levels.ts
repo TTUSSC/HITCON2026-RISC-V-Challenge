@@ -42,6 +42,7 @@
 // ahead" affordance is a UI-layer concern out of scope here).
 
 import type { LevelSchema } from "./types";
+import { BASE_ADDRESS } from "./assembler";
 
 // ---------------------------------------------------------------------------
 // Level 0 — Instruction Warmup
@@ -202,7 +203,18 @@ export const L1_2: LevelSchema = {
     },
     {
       widgetType: "fill-blank",
-      judge: { kind: "direct" },
+      // Real emulator+register-probe judging (same L0-1..L0-3 pattern) — see
+      // level-review-L1.md §0 Addition 1: this used to be judge:"direct", a
+      // pure string-equality check on the picked option that never actually
+      // assembled/ran anything, despite visually presenting real asm as if
+      // it were being executed. `ecall` is left out of setupAsmTemplate
+      // (kept only in the displayed asmLines for narrative continuity, same
+      // asymmetry L0-2 already uses) so wrong picks don't trigger a real
+      // syscall with unset a0/a1/a2 — checkRegister only cares whether a7
+      // actually ended up holding 64.
+      judge: { kind: "emulator", expect: { registers: { a7: 64 } } },
+      setupAsmTemplate: "li {{a7}}, 64",
+      checkRegister: "a7",
       title: "syscall number 放哪個暫存器？",
       prompt:
         "你想跟系統要哪個服務？呼叫 `read`/`write`/`exit` 前，系統呼叫編號要放進哪個暫存器？（挑 `write` 的 syscall 編號）",
@@ -232,7 +244,13 @@ export const L1_3: LevelSchema = {
     },
     {
       widgetType: "fill-blank",
-      judge: { kind: "direct" },
+      // Real emulator+register-probe judging — see L1-2's identical comment
+      // above (level-review-L1.md §0 Addition 1). `li a7, 64` / `ecall` stay
+      // in the displayed asmLines but are dropped from setupAsmTemplate for
+      // the same reason: checkRegister only cares whether a0 ended up 1.
+      judge: { kind: "emulator", expect: { registers: { a0: 1 } } },
+      setupAsmTemplate: "li a0, {{a0}}",
+      checkRegister: "a0",
       title: "write 要知道寫到哪裡",
       prompt:
         "把 `a0` 設成 **1**（stdout）。L1-2 ＋ L1-3 合起來等於原本一次到位的目標——過關瞬間已經站在 Level 2 門口。",
@@ -247,13 +265,53 @@ export const L1_4: LevelSchema = {
   id: "L1-4",
   title: "ra 與 sp：先混個眼熟",
   onPass: { advance: "L2-0" },
+  // No reward — the repo owner's explicit L1-2 reward decision (see file
+  // header) stays as-is; this level gains real interaction (see
+  // level-review-L1.md 5.1/5.2), not a new reward-granting checkpoint.
   steps: [
     {
       widgetType: "observation",
       judge: { kind: "none" },
       title: "ra 與 sp：先混個眼熟",
       prompt:
-        "- `ra`（`x1`）：函式怎麼記得要跳回哪\n- `sp`（`x2`）：堆疊指標\n\n不考，純粹先混眼熟——Boss 分支的整個 stack 佈局會直接用到這兩個。",
+        "- `ra`（`x1`，return address）：呼叫函式的 `jal` 會把「呼叫指令的下一行位址」記進 `ra`，函式結束時的 `ret`（其實是 `jalr x0, ra, 0` 這個假指令）就是跳回 `ra` 記住的那個位址。\n- `sp`（`x2`）：堆疊指標，先混眼熟——Boss 分支的整個 stack 佈局會直接用到。\n\n`sp` 現在不考，但 `ra` 現在就練一次：誰記得要跳回哪。",
+      registerContext: ["ra", "sp"],
+      registerLabels: {
+        ra: "return address，跳回哪",
+        sp: "堆疊指標",
+      },
+    },
+    {
+      widgetType: "fill-blank",
+      // Real emulator+register-probe judging, same L0-1..L0-3/L1-2/L1-3
+      // pattern — this is L1-4's new practice step (level-review-L1.md's
+      // top-priority fix: ra was the only named ABI register in the whole
+      // platform's stated minimum bar with zero assessment inside the
+      // booth-scoped flow). `jal {{rd}}, __l14_after` always jumps to the
+      // very next instruction regardless of which register the player
+      // picks (the jump *target* is fixed by the label; only the *link*
+      // register differs), so every option is safe to actually execute —
+      // no risk of a wrong pick landing on an unmapped address. Only a
+      // correct pick (rd=ra) leaves `ra` holding the real link address
+      // (BASE_ADDRESS + 4, the address of the instruction right after the
+      // jal); any other pick leaves `ra` at its untouched reset value (0),
+      // which genuinely fails the check.
+      judge: {
+        kind: "emulator",
+        expect: { registers: { ra: BASE_ADDRESS + 4 } },
+      },
+      setupAsmTemplate: "jal {{rd}}, __l14_after\n__l14_after:",
+      checkRegister: "ra",
+      title: "誰記得要跳回哪？",
+      prompt:
+        "`jal` 呼叫函式時，會把「跳過去之前的下一行位址」記錄下來，這樣函式做完 `ret` 才知道要跳回哪。哪個暫存器負責記住這個返回位址？",
+      asmLines: [
+        "jal {{rd}}, func   # 呼叫 func",
+        "func:",
+        "    ret              # 跳回呼叫者",
+      ],
+      blanks: [{ id: "rd", answer: "ra", options: ["ra", "sp", "a0", "t0"] }],
+      registerContext: ["ra", "sp", "a0", "t0"],
     },
   ],
 };
