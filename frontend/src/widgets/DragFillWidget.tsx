@@ -2,18 +2,21 @@
 // drag-and-drop. Native DnD is unreliable on touch devices (the primary
 // input at a booth), so the interaction is: tap a slot to make it "active",
 // then tap an option value to assign it into that slot (tapping the same
-// slot again clears/reassigns). onPass hands back the raw
-// Record<slotId, value> assignments — same shape as fill-blank's answer
-// record — up to LevelPlayer. Per types.ts/judge.ts this widget's levels are
-// always judge.kind 'emulator' (L2-1), so LevelPlayer needs to turn these
-// raw assignments into an assembled RunRequest before running the emulator;
-// see the TODO in LevelPlayer.tsx's emulator-run branch — that translation
-// is out of scope here.
+// slot again clears/reassigns).
+//
+// Per types.ts/judge.ts this widget's levels are always judge.kind
+// 'emulator' (L2-1): each slot's chosen option maps to real asm
+// (slot.optionAsm), concatenated in slot order between schema.asmPrefix/
+// asmSuffix and assembled here into a RunRequest, which onPass hands up to
+// LevelPlayer — LevelPlayer still owns the actual emulatorAdapter.run() +
+// judge() call, this widget only produces the payload to run (not a
+// judgement), same division of labor as FreehandEditorWidget.
 
 import { useState } from "react";
 import { Check } from "lucide-react";
 import type { WidgetComponent } from "../engine/widgetRegistry";
 import type { DragFillLevel } from "../engine/types";
+import { assembleToElf } from "../engine/assembler";
 import "./widgets.css";
 
 export const DragFillWidget: WidgetComponent<DragFillLevel> = ({
@@ -41,6 +44,19 @@ export const DragFillWidget: WidgetComponent<DragFillLevel> = ({
   const allOptions = Array.from(
     new Set(schema.slots.flatMap((slot) => slot.options)),
   );
+
+  const handleSubmit = () => {
+    const body = schema.slots
+      .map((slot) => slot.optionAsm?.[assignments[slot.id]] ?? "")
+      .join("\n");
+    const source = `.text\n${schema.asmPrefix ?? ""}${body}\n${schema.asmSuffix ?? ""}`;
+    try {
+      const elf = assembleToElf(source);
+      onPass({ elf });
+    } catch (err) {
+      console.error(`DragFillWidget: failed to assemble ${schema.id}`, err);
+    }
+  };
 
   return (
     <div className="widget widget-drag-fill">
@@ -83,7 +99,7 @@ export const DragFillWidget: WidgetComponent<DragFillLevel> = ({
         type="button"
         className="widget-primary-btn"
         disabled={!allFilled}
-        onClick={() => onPass(assignments)}
+        onClick={handleSubmit}
       >
         <Check size={16} />
         Submit

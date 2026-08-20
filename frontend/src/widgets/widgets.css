@@ -90,6 +90,49 @@
   margin-bottom: 16px;
 }
 
+/* Real asm line(s) shown as the primary visual element (see FillBlankLevel
+   .asmLines) — a monospace code block with the blank(s) rendered inline,
+   instead of an abstract prose question floating over unrelated pills. */
+.fill-blank-code {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text);
+  margin-bottom: 16px;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.fill-blank-code-line + .fill-blank-code-line {
+  margin-top: 2px;
+}
+
+.fill-blank-slot {
+  display: inline-block;
+  min-width: 2.5em;
+  padding: 0 0.35em;
+  border-bottom: 2px dashed var(--text-muted);
+  color: var(--rice-shadow);
+  font-weight: 700;
+  text-align: center;
+}
+
+.fill-blank-slot[data-empty="true"] {
+  color: var(--text-muted);
+}
+
+.fill-blank-error {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #c23434;
+  margin-bottom: 12px;
+}
+
 .fill-blank-options {
   display: flex;
   flex-wrap: wrap;
@@ -475,6 +518,18 @@
   color: var(--text);
   resize: vertical;
   margin-bottom: 16px;
+}
+
+.freehand-editor-error {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 2px solid #c23434;
+  background: rgba(194, 52, 52, 0.08);
+  color: #c23434;
+  margin: -8px 0 16px;
 }
 
 /* stub placeholder (widgets not yet implemented) */

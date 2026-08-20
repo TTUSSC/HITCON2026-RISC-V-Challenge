@@ -1,12 +1,32 @@
 // Fill-in-the-blank widget — options only, no typing (mobile-friendly per
-// levels.md). Tracks selections locally; onPass hands the raw
+// levels.md). The primary visual is the real asm line (schema.asmLines) with
+// the blank(s) rendered inline as dashed fill-in slots — not prose floating
+// over unrelated option pills (content-design fix: this is meant to read as
+// an actual asm crash course).
+//
+// For judge.kind === 'direct' levels (L1-2/L1-3 etc.), onPass hands the raw
 // Record<blankId, chosenOption> up to LevelPlayer, which runs it through
-// judge()'s 'fill-blank' direct comparator. This widget never grades itself.
+// judge()'s 'fill-blank' direct comparator — same as before.
+//
+// For judge.kind === 'emulator' levels (L0-1..L0-3 — the ones whose judge
+// condition in levels.md is a real "執行後暫存器值等於..." check), this
+// widget assembles schema.setupAsmTemplate (falling back to
+// asmLines.join("\n")) with the picked option(s) substituted in, wraps it
+// with assembler/registerProbe.ts's register-probe harness, and hands
+// LevelPlayer a RunRequest — LevelPlayer still owns the actual
+// emulatorAdapter.run() + judge() call (widgets don't judge themselves).
+// Assembly errors here are level-content bugs (curated snippets, not user
+// input), so they're logged rather than shown as a user-facing message —
+// contrast with FreehandEditorWidget, where the source is user-typed and
+// errors are a real UX requirement.
 
 import { useState } from "react";
 import type { WidgetComponent } from "../engine/widgetRegistry";
 import type { FillBlankLevel } from "../engine/types";
 import { RegisterBank } from "../components/RegisterBank";
+import { tokenizeAsmLine, substituteAsmTemplate } from "../engine/asmTemplate";
+import { assembleToElf } from "../engine/assembler";
+import { buildRegisterProbeProgram } from "../engine/assembler/registerProbe";
 import "./widgets.css";
 
 export const FillBlankWidget: WidgetComponent<FillBlankLevel> = ({
@@ -38,6 +58,31 @@ export const FillBlankWidget: WidgetComponent<FillBlankLevel> = ({
     }
   }
 
+  const handleSubmit = () => {
+    if (schema.judge.kind === "emulator") {
+      const template =
+        schema.setupAsmTemplate ?? (schema.asmLines ?? []).join("\n");
+      const setupAsm = substituteAsmTemplate(template, selected);
+      const checkRegister = schema.checkRegister ?? "a0";
+      try {
+        const elf = assembleToElf(
+          buildRegisterProbeProgram(
+            setupAsm,
+            checkRegister,
+            schema.probeExtraData,
+          ),
+        );
+        onPass({ elf });
+      } catch (err) {
+        // Curated level content failed to assemble — a content bug, not a
+        // user input error. Log it; there's nothing the player can fix.
+        console.error(`FillBlankWidget: failed to assemble ${schema.id}`, err);
+      }
+      return;
+    }
+    onPass(selected);
+  };
+
   return (
     <div className="widget widget-fill-blank">
       <h2>{schema.title}</h2>
@@ -48,6 +93,27 @@ export const FillBlankWidget: WidgetComponent<FillBlankLevel> = ({
           values={registerValues}
           highlighted={highlighted}
         />
+      )}
+      {schema.asmLines && (
+        <div className="fill-blank-code">
+          {schema.asmLines.map((line, i) => (
+            <div className="fill-blank-code-line" key={i}>
+              {tokenizeAsmLine(line).map((token, j) =>
+                token.kind === "text" ? (
+                  <span key={j}>{token.value}</span>
+                ) : (
+                  <span
+                    key={j}
+                    className="fill-blank-slot"
+                    data-empty={!selected[token.id]}
+                  >
+                    {selected[token.id] ?? "___"}
+                  </span>
+                ),
+              )}
+            </div>
+          ))}
+        </div>
       )}
       {schema.blanks.map((blank) => (
         <div key={blank.id} className="fill-blank-row">
@@ -71,7 +137,7 @@ export const FillBlankWidget: WidgetComponent<FillBlankLevel> = ({
         type="button"
         className="widget-primary-btn"
         disabled={!allAnswered}
-        onClick={() => onPass(selected)}
+        onClick={handleSubmit}
       >
         Submit
       </button>

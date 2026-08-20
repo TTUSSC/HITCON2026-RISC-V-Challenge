@@ -59,6 +59,11 @@ function judgeEmulatorResult(
   ) {
     return false;
   }
+  if (expect.registers !== undefined) {
+    for (const [reg, expected] of Object.entries(expect.registers)) {
+      if (result.registers[reg] !== expected) return false;
+    }
+  }
   return true;
 }
 

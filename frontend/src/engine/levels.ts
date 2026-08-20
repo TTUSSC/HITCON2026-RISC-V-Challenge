@@ -36,8 +36,10 @@ export const L0_1: LevelSchema = {
   title: "暫存器就是超快的變數",
   prompt:
     "add／addi／sub — 暫存器就是超快的變數。從少數選項中選填空湊出目標值：把 a0 設成 5。",
+  asmLines: ["addi a0, x0, {{imm}}"],
   blanks: [{ id: "imm", answer: "5", options: ["3", "5", "7", "10"] }],
-  judge: { kind: "direct" },
+  checkRegister: "a0",
+  judge: { kind: "emulator", expect: { registers: { a0: 5 } } },
   onPass: { advance: "L0-2", reward: "hitcon-badge" },
 };
 
@@ -46,9 +48,15 @@ export const L0_2: LevelSchema = {
   type: "fill-blank",
   title: "li／mv 其實是假指令",
   prompt:
-    "li a0, 5 其實被組譯器展開成 addi a0, x0, 5——li／mv／nop／ret 都是假指令。用 mv 把 a1 的值複製到 a0：mv a0, ___",
+    "li a0, 5 其實被組譯器展開成 addi a0, x0, 5——li／mv／nop／ret 都是假指令。a1 已經被設成 7，用 mv 把 a1 的值複製到 a0：",
+  asmLines: ["mv a0, {{src}}"],
+  // a1 is pre-loaded with a known value (7) so only the correct base (a1)
+  // reproduces it in a0 — the other options land on a1/a2/ra's actual reset
+  // state (0), which fails the register check just as wrong answers should.
+  setupAsmTemplate: "li a1, 7\nmv a0, {{src}}",
+  checkRegister: "a0",
   blanks: [{ id: "src", answer: "a1", options: ["a1", "a2", "zero", "ra"] }],
-  judge: { kind: "direct" },
+  judge: { kind: "emulator", expect: { registers: { a0: 7 } } },
   onPass: { advance: "L0-3" },
 };
 
@@ -57,9 +65,25 @@ export const L0_3: LevelSchema = {
   type: "fill-blank",
   title: "暫存器帶不下所有東西，要跟記憶體借",
   prompt:
-    "暫存器只有 32 個，帶不下所有東西，要跟記憶體借。lw a0, 0(a1) 是「offset(base)」語法，位址在 a1，從選項中選出補完讀值到 a0 的指令：lw a0, 0(___)",
+    "暫存器只有 32 個，帶不下所有東西，要跟記憶體借。lw a0, 0(a1) 是「offset(base)」語法，位址在 a1，從選項中選出補完讀值到 a0 的指令：",
+  asmLines: ["lw a0, 0({{base}})"],
+  // Each candidate base register points at a distinct known word — only a1
+  // points at the word holding 42, so wrong choices load a different (wrong)
+  // value instead of crashing on an invalid address.
+  setupAsmTemplate:
+    "la a1, __l03_correct\n" +
+    "la a0, __l03_wrong_a\n" +
+    "la a2, __l03_wrong_b\n" +
+    "la sp, __l03_wrong_c\n" +
+    "lw a0, 0({{base}})",
+  probeExtraData:
+    "__l03_correct: .word 42\n" +
+    "__l03_wrong_a: .word 17\n" +
+    "__l03_wrong_b: .word 34\n" +
+    "__l03_wrong_c: .word 51",
+  checkRegister: "a0",
   blanks: [{ id: "base", answer: "a1", options: ["a0", "a1", "a2", "sp"] }],
-  judge: { kind: "direct" },
+  judge: { kind: "emulator", expect: { registers: { a0: 42 } } },
   onPass: { advance: "L0-4" },
 };
 
@@ -93,6 +117,7 @@ export const L1_2: LevelSchema = {
   title: "syscall number 放哪個暫存器？",
   prompt:
     "你想跟系統要哪個服務？呼叫 read/write/exit 前，系統呼叫編號要放進哪個暫存器？（挑 write 的 syscall 編號）",
+  asmLines: ["li {{a7}}, 64   # write 的 syscall number", "ecall"],
   blanks: [{ id: "a7", answer: "a7", options: ["a0", "a1", "a7", "ra"] }],
   registerContext: ["a0", "a1", "a7", "ra"],
   judge: { kind: "direct" },
@@ -105,6 +130,7 @@ export const L1_3: LevelSchema = {
   title: "write 要知道寫到哪裡",
   prompt:
     "write 要知道寫到哪裡：把 a0 設成 1（stdout）。L1-2 ＋ L1-3 合起來等於原本一次到位的目標——過關瞬間已經站在 Level 2 門口。",
+  asmLines: ["li a0, {{a0}}   # 1 = stdout", "li a7, 64", "ecall"],
   blanks: [{ id: "a0", answer: "1", options: ["0", "1", "2", "64"] }],
   registerContext: ["a0", "a1", "a7"],
   judge: { kind: "direct" },
@@ -144,17 +170,52 @@ export const L2_1: LevelSchema = {
     {
       id: "a1",
       label: "字串位址",
-      // TODO: placeholder pending real test ELF (see levels.md 待驗證/待辦)
       options: ["0x10000", "0x20000", "0x30000"],
       answer: "0x10000",
+      // "0x10000" reads as "the string's real address" (msg happens to sit
+      // right at this program's base address) — the wrong options point at
+      // unmapped memory, so a wrong pick crashes instead of printing.
+      optionAsm: {
+        "0x10000": "la a1, msg",
+        "0x20000": "li a1, 0x20000",
+        "0x30000": "li a1, 0x30000",
+      },
     },
     {
       id: "a2",
       label: "長度",
       options: ["1", "2", "4"],
       answer: "2",
+      optionAsm: {
+        "1": "li a2, 1",
+        "2": "li a2, 2",
+        "4": "li a2, 4",
+      },
     },
   ],
+  asmPrefix: "_start:\n",
+  // Slot asm sets a1/a2; this does the actual write(1, a1, a2) with the
+  // student's chosen values, then an unconditional trailing newline write —
+  // required so rv32emu's line-buffered stdout (Module.print only flushes a
+  // *completed* line) actually surfaces the "HI" text at all; verified
+  // end-to-end against the real WASM build (see assembler/registerProbe.ts's
+  // header for the same gotcha). Module.print reports the line without its
+  // trailing "\n", so the judge's exact-match "HI" still holds.
+  asmSuffix:
+    "    li a0, 1\n" +
+    "    li a7, 64\n" +
+    "    ecall\n" +
+    "    la a1, __nl\n" +
+    "    li a2, 1\n" +
+    "    li a0, 1\n" +
+    "    li a7, 64\n" +
+    "    ecall\n" +
+    "    li a0, 0\n" +
+    "    li a7, 93\n" +
+    "    ecall\n" +
+    ".data\n" +
+    'msg: .ascii "HI"\n' +
+    "__nl: .byte 10\n",
   judge: { kind: "emulator", expect: { stdout: "HI" } },
   onPass: { advance: "L2-2", reward: "ttussc-merch" },
 };

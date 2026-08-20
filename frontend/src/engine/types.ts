@@ -28,6 +28,12 @@ export interface EmulatorExpectation {
   stdout?: string;
   stdoutContains?: string;
   exitCode?: number;
+  // Expected final register values. Checked against EmulatorResult.registers
+  // — see emulatorAdapter.ts's run() for how that gets populated (the real
+  // WASM build exports no register-accessor, so it's parsed off a "reg=
+  // value" stdout line a register-probe test harness prints; see
+  // assembler/registerProbe.ts for the full rationale). Used by L0-1..L0-3.
+  registers?: Record<string, number>;
 }
 
 export type JudgeSpec =
@@ -55,12 +61,50 @@ export interface FillBlankLevel extends LevelBase {
   // the blanks (e.g. ["a0"..."a7"] for calling-convention levels L1-2/L1-3).
   // Absent for non-register fill-blanks (e.g. L0-1's arithmetic questions).
   registerContext?: string[];
+  // Real RISC-V instruction line(s) shown as the primary visual element
+  // (monospace), with each blank rendered inline via a "{{blankId}}"
+  // placeholder substituted by the picked option once chosen — e.g.
+  // ["addi a0, x0, {{imm}}"]. Added so fill-blank levels read as an actual
+  // asm crash course instead of prose describing register concepts in the
+  // abstract (see FillBlankWidget.tsx). Optional so existing non-asm
+  // fill-blanks (none currently, but keeps the schema honest) aren't forced
+  // to fabricate a code line.
+  asmLines?: string[];
+  // judge.kind 'emulator' only (L0-1..L0-3): the actual program body run to
+  // test the picked option(s), with the same "{{blankId}}" placeholder
+  // substitution as asmLines. May differ from asmLines (e.g. extra setup
+  // instructions the player doesn't need to see, like pre-loading a1 with a
+  // known value before L0-2's `mv a0, {{src}}`) — falls back to
+  // asmLines.join("\n") when omitted. Assembled via
+  // assembler/registerProbe.ts's buildRegisterProbeProgram, which appends
+  // code to report `checkRegister`'s final value.
+  setupAsmTemplate?: string;
+  checkRegister?: string;
+  // Extra data-only asm (labels + .word/.byte/.asciz/.space, no
+  // instructions) that setupAsmTemplate addresses via la/lw/sw — e.g. L0-3
+  // needs known memory contents for `lw` to read from. See
+  // assembler/registerProbe.ts's `extraData` parameter for why this can't
+  // just be appended inline to setupAsmTemplate.
+  probeExtraData?: string;
 }
 
 export interface DragOrderLevel extends LevelBase {
   type: "drag-order";
-  items: Array<{ id: string; label: string }>;
+  items: Array<{
+    id: string;
+    label: string;
+    // Real assembly text this item contributes when judge.kind is
+    // 'emulator' — concatenated in the player's chosen order and assembled
+    // (see LevelPlayer.tsx). Optional because not every drag-order level is
+    // emulator-judged (some direct-judge levels only care about order).
+    asm?: string;
+  }>;
   correctOrder: string[];
+  // Assembled ahead of the (concatenated, in-order) item asm, and after it,
+  // respectively — e.g. a `_start:` label + register setup before, an exit
+  // syscall after. Only meaningful when judge.kind is 'emulator'.
+  asmPrefix?: string;
+  asmSuffix?: string;
 }
 
 export interface DragFillLevel extends LevelBase {
@@ -70,7 +114,16 @@ export interface DragFillLevel extends LevelBase {
     label: string;
     options: string[];
     answer: string;
+    // Assembly text each option contributes when placed in this slot, keyed
+    // by the option's display string (same strings as `options`) — e.g.
+    // L2-1's "a1" slot maps "0x10000" -> "la a1, msg". Only meaningful when
+    // judge.kind is 'emulator'.
+    optionAsm?: Record<string, string>;
   }>;
+  // Assembled around the slots' chosen-option asm, in slot order — e.g. a
+  // `_start:` label + syscall number setup before, an exit syscall after.
+  asmPrefix?: string;
+  asmSuffix?: string;
 }
 
 export interface LeverSliderLevel extends LevelBase {
