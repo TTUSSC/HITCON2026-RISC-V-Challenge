@@ -7,11 +7,12 @@
 // graded submit.
 
 import { useState } from "react";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Loader2 } from "lucide-react";
 import type { WidgetComponent } from "../engine/widgetDefinition";
 import { defineWidget } from "../engine/widgetDefinition";
 import type { LeverSliderStep } from "../engine/types";
 import { StackDiagram } from "../components/StackDiagram";
+import { useSubmitState } from "../engine/submitState";
 import "./widgets.css";
 
 export const LeverSliderWidget: WidgetComponent<LeverSliderStep> = ({
@@ -20,6 +21,7 @@ export const LeverSliderWidget: WidgetComponent<LeverSliderStep> = ({
 }) => {
   const [value, setValue] = useState<number>(schema.min);
   const hasTarget = schema.target !== undefined;
+  const isRunning = useSubmitState() === "running";
 
   return (
     <div className="widget widget-lever-slider">
@@ -55,9 +57,14 @@ export const LeverSliderWidget: WidgetComponent<LeverSliderStep> = ({
         <button
           type="button"
           className="widget-primary-btn"
+          disabled={isRunning}
           onClick={() => onPass(value)}
         >
-          <Check size={16} />
+          {isRunning ? (
+            <Loader2 size={16} className="spin" />
+          ) : (
+            <Check size={16} />
+          )}
           Submit
         </button>
       ) : (

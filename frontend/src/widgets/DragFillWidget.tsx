@@ -13,11 +13,12 @@
 // judgement), same division of labor as FreehandEditorWidget.
 
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import type { WidgetComponent } from "../engine/widgetDefinition";
 import { defineWidget } from "../engine/widgetDefinition";
 import type { DragFillStep } from "../engine/types";
 import { assembleToElf } from "../engine/assembler";
+import { useSubmitState } from "../engine/submitState";
 import "./widgets.css";
 
 export const DragFillWidget: WidgetComponent<DragFillStep> = ({
@@ -26,6 +27,7 @@ export const DragFillWidget: WidgetComponent<DragFillStep> = ({
 }) => {
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [activeSlot, setActiveSlot] = useState<string | null>(null);
+  const isRunning = useSubmitState() === "running";
 
   const allFilled = schema.slots.every((slot) => assignments[slot.id]);
 
@@ -102,10 +104,14 @@ export const DragFillWidget: WidgetComponent<DragFillStep> = ({
       <button
         type="button"
         className="widget-primary-btn"
-        disabled={!allFilled}
+        disabled={!allFilled || isRunning}
         onClick={handleSubmit}
       >
-        <Check size={16} />
+        {isRunning ? (
+          <Loader2 size={16} className="spin" />
+        ) : (
+          <Check size={16} />
+        )}
         Submit
       </button>
     </div>

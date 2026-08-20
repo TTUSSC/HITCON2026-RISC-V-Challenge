@@ -21,6 +21,7 @@
 // errors are a real UX requirement.
 
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import type { WidgetComponent } from "../engine/widgetDefinition";
 import { defineWidget } from "../engine/widgetDefinition";
 import type { FillBlankStep } from "../engine/types";
@@ -28,6 +29,7 @@ import { RegisterBank } from "../components/RegisterBank";
 import { tokenizeAsmLine, substituteAsmTemplate } from "../engine/asmTemplate";
 import { assembleToElf } from "../engine/assembler";
 import { buildRegisterProbeProgram } from "../engine/assembler/registerProbe";
+import { useSubmitState } from "../engine/submitState";
 import "./widgets.css";
 
 export const FillBlankWidget: WidgetComponent<FillBlankStep> = ({
@@ -35,6 +37,8 @@ export const FillBlankWidget: WidgetComponent<FillBlankStep> = ({
   onPass,
 }) => {
   const [selected, setSelected] = useState<Record<string, string>>({});
+  const submitState = useSubmitState();
+  const isRunning = submitState === "running";
 
   const allAnswered = schema.blanks.every((blank) => selected[blank.id]);
 
@@ -140,10 +144,10 @@ export const FillBlankWidget: WidgetComponent<FillBlankStep> = ({
       <button
         type="button"
         className="widget-primary-btn"
-        disabled={!allAnswered}
+        disabled={!allAnswered || isRunning}
         onClick={handleSubmit}
       >
-        Submit
+        {isRunning ? <Loader2 size={16} className="spin" /> : "Submit"}
       </button>
     </div>
   );

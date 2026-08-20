@@ -7,10 +7,11 @@
 
 import { useState } from "react";
 import { ReactSortable } from "react-sortablejs";
-import { GripVertical, Check } from "lucide-react";
+import { GripVertical, Check, Loader2 } from "lucide-react";
 import type { WidgetComponent } from "../engine/widgetDefinition";
 import { defineWidget } from "../engine/widgetDefinition";
 import type { DragOrderStep } from "../engine/types";
+import { useSubmitState } from "../engine/submitState";
 import "./widgets.css";
 
 interface SortableItem {
@@ -25,6 +26,7 @@ export const DragOrderWidget: WidgetComponent<DragOrderStep> = ({
   const [items, setItems] = useState<SortableItem[]>(
     schema.items.map((item) => ({ id: item.id, label: item.label })),
   );
+  const isRunning = useSubmitState() === "running";
 
   return (
     <div className="widget widget-drag-order">
@@ -46,9 +48,14 @@ export const DragOrderWidget: WidgetComponent<DragOrderStep> = ({
       <button
         type="button"
         className="widget-primary-btn"
+        disabled={isRunning}
         onClick={() => onPass(items.map((item) => item.id))}
       >
-        <Check size={16} />
+        {isRunning ? (
+          <Loader2 size={16} className="spin" />
+        ) : (
+          <Check size={16} />
+        )}
         Submit
       </button>
     </div>

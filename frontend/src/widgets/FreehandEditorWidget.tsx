@@ -15,11 +15,12 @@
 // per-line errors are rendered inline instead of calling onPass.
 
 import { useState } from "react";
-import { Play } from "lucide-react";
+import { Play, Loader2 } from "lucide-react";
 import type { WidgetComponent } from "../engine/widgetDefinition";
 import { defineWidget } from "../engine/widgetDefinition";
 import type { FreehandEditorStep } from "../engine/types";
 import { assemble, buildElf, formatAssembleErrors } from "../engine/assembler";
+import { useSubmitState } from "../engine/submitState";
 import "./widgets.css";
 
 export const FreehandEditorWidget: WidgetComponent<FreehandEditorStep> = ({
@@ -28,6 +29,7 @@ export const FreehandEditorWidget: WidgetComponent<FreehandEditorStep> = ({
 }) => {
   const [source, setSource] = useState(schema.starterCode ?? "");
   const [error, setError] = useState<string | null>(null);
+  const isRunning = useSubmitState() === "running";
 
   const handleRun = () => {
     const result = assemble(source);
@@ -66,10 +68,14 @@ export const FreehandEditorWidget: WidgetComponent<FreehandEditorStep> = ({
       <button
         type="button"
         className="widget-primary-btn"
-        disabled={source.trim().length === 0}
+        disabled={source.trim().length === 0 || isRunning}
         onClick={handleRun}
       >
-        <Play size={16} />
+        {isRunning ? (
+          <Loader2 size={16} className="spin" />
+        ) : (
+          <Play size={16} />
+        )}
         Run
       </button>
     </div>

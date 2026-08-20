@@ -418,6 +418,29 @@
   }
 }
 
+/* Wraps every step's <Widget> (see LevelPlayer.tsx) — a plain block so it
+   doesn't fight the widget's own layout, just a motion target for the
+   shake/bounce submit-state feedback. */
+.widget-feedback-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* "再試一次" inline banner shown on a wrong answer — not blocking, sits
+   under the widget card so the player can immediately retry. */
+.widget-feedback-message {
+  margin-top: 12px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: var(--coral);
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
 /* gadget-chain */
 .gadget-chain-current {
   margin-bottom: 16px;

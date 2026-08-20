@@ -5,10 +5,11 @@
 // 'gadget-chain' direct comparator.
 
 import { useState } from "react";
-import { X, Check } from "lucide-react";
+import { X, Check, Loader2 } from "lucide-react";
 import type { WidgetComponent } from "../engine/widgetDefinition";
 import { defineWidget } from "../engine/widgetDefinition";
 import type { GadgetChainStep } from "../engine/types";
+import { useSubmitState } from "../engine/submitState";
 import "./widgets.css";
 
 export const GadgetChainWidget: WidgetComponent<GadgetChainStep> = ({
@@ -16,6 +17,7 @@ export const GadgetChainWidget: WidgetComponent<GadgetChainStep> = ({
   onPass,
 }) => {
   const [chain, setChain] = useState<string[]>([]);
+  const isRunning = useSubmitState() === "running";
   const gadgetsById = Object.fromEntries(schema.gadgets.map((g) => [g.id, g]));
 
   const addGadget = (id: string) => setChain((prev) => [...prev, id]);
@@ -73,10 +75,14 @@ export const GadgetChainWidget: WidgetComponent<GadgetChainStep> = ({
       <button
         type="button"
         className="widget-primary-btn"
-        disabled={chain.length === 0}
+        disabled={chain.length === 0 || isRunning}
         onClick={() => onPass(chain)}
       >
-        <Check size={16} />
+        {isRunning ? (
+          <Loader2 size={16} className="spin" />
+        ) : (
+          <Check size={16} />
+        )}
         Submit
       </button>
     </div>
