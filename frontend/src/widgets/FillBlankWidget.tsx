@@ -44,22 +44,37 @@ export const FillBlankWidget: WidgetComponent<FillBlankStep> = ({
   const allAnswered = schema.blanks.every((blank) => selected[blank.id]);
 
   // Two shapes of register blank, both handled here:
+  //  - the *chosen option* NAMES a register (L1-2/L1-4: "which register
+  //    holds the syscall number / return address?") -> show the real
+  //    numeric value that register would hold once the setup asm actually
+  //    runs, read from the same judge.expect.registers data that judges the
+  //    step (see level-review-L1.md §0 Addition 2) — not an echo of the
+  //    picked option string. A wrong pick shows "?" rather than a fabricated
+  //    number, since we only know the real value for the register the step
+  //    actually checks.
   //  - blank.id IS a register in registerContext and the options are values
-  //    (L1-3: "set a0 to ___" -> show the chosen value in a0's box), or
-  //  - the *chosen option* is a register name (L1-2: "which register holds
-  //    the syscall number?" -> highlight whichever register got picked).
+  //    (L1-3: "set a0 to ___" -> show the chosen value in a0's box).
+  // Checked in this order because a blank's id can itself be a register name
+  // whose *options* are also register names (L1-2's blank id is "a7"), in
+  // which case the "chosen option names a register" reading is the correct
+  // one (see the review's exact bug report on this).
   const registerValues: Partial<Record<string, string>> = {};
   let highlighted: string | undefined;
   if (schema.registerContext) {
+    const expectedRegisters =
+      schema.judge.kind === "emulator"
+        ? schema.judge.expect.registers
+        : undefined;
     for (const blank of schema.blanks) {
       const chosen = selected[blank.id];
       if (!chosen) continue;
-      if (schema.registerContext.includes(blank.id)) {
+      if (schema.registerContext.includes(chosen)) {
+        const real = expectedRegisters?.[chosen];
+        registerValues[chosen] = real !== undefined ? String(real) : "?";
+        highlighted = chosen;
+      } else if (schema.registerContext.includes(blank.id)) {
         registerValues[blank.id] = chosen;
         highlighted = blank.id;
-      } else if (schema.registerContext.includes(chosen)) {
-        registerValues[chosen] = blank.id;
-        highlighted = chosen;
       }
     }
   }
