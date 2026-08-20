@@ -656,15 +656,21 @@ export const L1_3: LevelSchema = {
       // above (level-review-L1.md §0 Addition 1). `li a7, 64` / `ecall` stay
       // in the displayed asmLines but are dropped from setupAsmTemplate for
       // the same reason: checkRegister only cares whether a0 ended up 1.
+      //
+      // No registerContext here (unlike L1-1/L1-2/L1-4) — the repo owner
+      // flagged that a RegisterBank next to asmLines with an inline blank is
+      // redundant: picking an option already updates the code line itself
+      // ("li a0, 1"), so a register box just echoing the same pick with a1/
+      // a7 sitting permanently empty adds nothing, it was the exact "decoy
+      // box" pattern cogload-review-L1.md's RegisterBank finding calls out.
       judge: { kind: "emulator", expect: { registers: { a0: 1 } } },
       setupAsmTemplate: "li a0, {{a0}}",
       checkRegister: "a0",
       title: "write 要知道寫到哪裡",
       prompt:
-        "把 `a0` 設成 **1**（stdout）。L1-2 ＋ L1-3 合起來等於原本一次到位的目標——過關瞬間已經站在 Level 2 門口。",
+        "把 `a0` 設成 **1**（stdout）。L1-2 加上 L1-3，就等於原本一次到位的目標，過關瞬間已經站在 Level 2 門口。",
       asmLines: ["li a0, {{a0}}   # 1 = stdout", "li a7, 64", "ecall"],
       blanks: [{ id: "a0", answer: "1", options: ["0", "1", "2", "64"] }],
-      registerContext: ["a0", "a1", "a7"],
     },
   ],
 };
