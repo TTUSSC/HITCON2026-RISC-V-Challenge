@@ -1,38 +1,23 @@
 // Wraps the verified rv32emu WASM call sequence behind a typed run().
-// Nothing outside this file should touch `window.Module` directly.
+// Nothing outside this file should touch `window.Module` directly — use
+// `loadEmulator()` (loadEmulator.ts) for that.
 //
-// Call sequence + gotchas (verified experimentally, see
-// project_hitcon_booth_challenge_design memory for the original trace):
-//   1. wait for Module.onRuntimeInitialized
+// Call sequence + gotchas (verified experimentally against the real WASM
+// build, see project_hitcon_booth_challenge_design memory + loadEmulator.ts
+// header comment for the cross-origin-isolation requirement):
+//   1. loadEmulator() — resolves once Module.onRuntimeInitialized has fired.
 //   2. Module.FS.writeFile(path, bytes) to load the ELF (and any files the
-//      program needs, e.g. flag.txt, before running it)
+//      program needs, e.g. flag.txt, before running it).
 //   3. Module.stdin = () => queue.shift() ?? null
-//   4. Module['run_user'](path)
+//   4. Register a stdout sink + exit listener (see loadEmulator.ts), then
+//      call Module['run_user'](path).
 //   5. run_user()'s return value is NOT the real exit code — execution is
-//      proxied to a pthread worker. Must poll _indirect_rv_alive() until it
-//      goes false (or use Module.onExit) to know it's actually done.
-//
-// TODO: the actual rv32emu.wasm/.js/.worker.js + coi-serviceworker.min.js
-// assets still need to be copied from the verification scratchpad into
-// frontend/public/ — this adapter assumes they're loaded via a <script>
-// tag that populates window.Module before run() is ever called.
+//      proxied to a pthread worker. Module.onExit(status) fires the real
+//      exit code; _indirect_rv_alive() polling is kept only as a fallback
+//      for the (empirically rare) case onExit doesn't fire.
 
 import type { EmulatorResult } from "./types";
-
-interface RV32EmuModule {
-  onRuntimeInitialized?: () => void;
-  FS: { writeFile: (path: string, data: Uint8Array | string) => void };
-  stdin: (() => number | null) | null;
-  run_user: (path: string) => void;
-  _indirect_rv_alive: () => boolean;
-  onExit?: (status: number) => void;
-}
-
-declare global {
-  interface Window {
-    Module?: RV32EmuModule;
-  }
-}
+import { loadEmulator, setExitListener, setStdoutSink } from "./loadEmulator";
 
 export interface RunRequest {
   elf: Uint8Array;
@@ -41,38 +26,13 @@ export interface RunRequest {
   files?: Array<{ path: string; data: Uint8Array }>;
 }
 
-function waitForRuntime(mod: RV32EmuModule): Promise<void> {
-  return new Promise((resolve) => {
-    // Emscripten only fires onRuntimeInitialized once; if it already ran
-    // before we attached, FS is already usable.
-    if (mod.FS) {
-      resolve();
-      return;
-    }
-    mod.onRuntimeInitialized = () => resolve();
-  });
-}
-
-function pollUntilExited(mod: RV32EmuModule): Promise<void> {
-  return new Promise((resolve) => {
-    const tick = () => {
-      if (!mod._indirect_rv_alive()) {
-        resolve();
-        return;
-      }
-      requestAnimationFrame(tick);
-    };
-    tick();
-  });
-}
+// Safety net in case neither onExit nor the alive-poll ever resolve (e.g. a
+// hung/looping program). Keeps a single bad ELF from wedging the judge UI.
+const RUN_TIMEOUT_MS = 15_000;
+const POLL_INTERVAL_MS = 50;
 
 export async function run(request: RunRequest): Promise<EmulatorResult> {
-  const mod = window.Module;
-  if (!mod) {
-    throw new Error("rv32emu Module not loaded — is rv32emu.js on the page?");
-  }
-
-  await waitForRuntime(mod);
+  const mod = await loadEmulator();
 
   const elfPath = request.elfPath ?? "/challenge.elf";
   mod.FS.writeFile(elfPath, request.elf);
@@ -80,25 +40,53 @@ export async function run(request: RunRequest): Promise<EmulatorResult> {
     mod.FS.writeFile(file.path, file.data);
   }
 
-  let stdoutBuf = "";
   const stdinQueue = request.stdin ? Array.from(request.stdin) : [];
   mod.stdin = () => stdinQueue.shift() ?? null;
 
-  // rv32emu's demo build streams stdout through the EM_ASM-wired DOM/console
-  // path rather than a plain callback — capturing it cleanly is still open,
-  // see docs/design/platform-architecture.md "待驗證 / 待辦". Placeholder
-  // hook below so callers have a stable shape to code against meanwhile.
-  const captureStdout = (chunk: string) => {
-    stdoutBuf += chunk;
-  };
-  void captureStdout;
+  const stdoutLines: string[] = [];
+  setStdoutSink((line) => stdoutLines.push(line));
 
-  mod.run_user(elfPath);
-  await pollUntilExited(mod);
+  let exitCode: number;
+  try {
+    exitCode = await new Promise<number>((resolve) => {
+      let settled = false;
+      const settle = (status: number) => {
+        if (settled) return;
+        settled = true;
+        resolve(status);
+      };
+
+      setExitListener(settle);
+      mod.run_user(elfPath);
+
+      const deadline = Date.now() + RUN_TIMEOUT_MS;
+      const poll = () => {
+        if (settled) return;
+        if (
+          typeof mod._indirect_rv_alive === "function" &&
+          !mod._indirect_rv_alive()
+        ) {
+          // onExit didn't fire but the program is confirmed dead — exit
+          // code is unrecoverable at this point, treat as clean (0).
+          settle(0);
+          return;
+        }
+        if (Date.now() > deadline) {
+          settle(-1); // sentinel: run timed out, did not observe exit
+          return;
+        }
+        setTimeout(poll, POLL_INTERVAL_MS);
+      };
+      setTimeout(poll, POLL_INTERVAL_MS);
+    });
+  } finally {
+    setExitListener(null);
+    setStdoutSink(null);
+  }
 
   return {
-    exitCode: 0, // TODO: wire real exit code once onExit capture is confirmed
-    stdout: stdoutBuf,
+    exitCode,
+    stdout: stdoutLines.join("\n"),
     registers: {},
   };
 }
