@@ -29,7 +29,7 @@ export function AboutPage() {
           這裡教的是真的 RISC-V
           組合語言，不是選擇題也不是模擬器動畫。你寫的每一行指令，都會被真的組譯成
           RV32 機械碼，丟進瀏覽器裡跑的真實 WASM RISC-V
-          模擬器（rv32emu）執行——過關與否，看的是執行完後真正的暫存器、記憶體、exit
+          模擬器（rv32emu）執行。過關與否，看的是執行完後真正的暫存器、記憶體、exit
           code，不是你輸入的字串長得像不像答案。
         </p>
         <p className="about-body">
@@ -38,25 +38,21 @@ export function AboutPage() {
           怎麼傳參數、<code>ra</code> 怎麼決定函式跳回哪）、syscall（
           <code>ecall</code> 搭配 <code>a7</code> 編號， 真的做{" "}
           <code>write</code>/<code>read</code>/<code>open</code>/
-          <code>exit</code>），最後進到記憶體安全的部分——buffer overflow
+          <code>exit</code>），最後進到記憶體安全的部分：buffer overflow
           怎麼覆寫你不該碰的位址，以及 ROP（return-oriented
-          programming）怎麼串現有的程式碼片段做出攻擊者想要的行為。每一關都是同一套真實
+          programming）怎麼串現有的程式碼片段，做出攻擊者想要的行為。每一關都是同一套真實
           RISC-V 工具鏈在跑，沒有為了好教而簡化成別的東西。
         </p>
         <p className="about-body about-credit">
           本平台的模擬器基於{" "}
-          <a href="https://github.com/jserv" target="_blank" rel="noreferrer">
-            jserv（黃敬群）
-          </a>{" "}
-          的{" "}
           <a
             href="https://github.com/sysprog21/rv32emu"
             target="_blank"
             rel="noreferrer"
           >
             rv32emu
-          </a>{" "}
-          專案打造，在此致謝。
+          </a>
+          （感謝 jserv 老師）打造。
         </p>
       </section>
 

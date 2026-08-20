@@ -4,9 +4,9 @@
    pattern from pages.css's lesson topbar for the pass-count bar. */
 
 .profile-page {
-  max-width: 32rem;
+  max-width: 36rem;
   margin: 0 auto;
-  padding: 1rem 24px 3rem;
+  padding: 1.5rem 1.2rem 2.5rem;
 }
 
 .profile-back-link {
