@@ -1,0 +1,80 @@
+/* Page-level layout — token-driven, same visual language as widgets.css
+   (chunky 3D-press cards/buttons, warm palette, Fredoka/Nunito). */
+
+.entry-page {
+  max-width: 40rem;
+  margin: 3rem auto;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.entry-title {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  margin: 0 0 8px;
+}
+
+.entry-subtitle {
+  font-family: var(--font-body);
+  color: var(--text-muted);
+  margin: 0 0 32px;
+}
+
+.entry-options {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.entry-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  border-radius: 20px;
+  border: none;
+  background: var(--bg-raised);
+  border-bottom: 6px solid var(--rice-shadow);
+  cursor: pointer;
+  text-align: center;
+}
+
+.entry-card:active {
+  border-bottom-width: 2px;
+  transform: translateY(4px);
+}
+
+.entry-card-icon {
+  color: var(--rice-deep);
+}
+
+.entry-card-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--text);
+}
+
+.entry-card-description {
+  font-family: var(--font-body);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.level-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.level-page-missing {
+  max-width: 28rem;
+  margin: 3rem auto;
+  padding: 24px;
+  text-align: center;
+}
+
+.level-page-missing code {
+  color: var(--coral-deep);
+}

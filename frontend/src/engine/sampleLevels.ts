@@ -1,11 +1,25 @@
 // Example LevelSchema objects transcribed from docs/design/levels.md, for
 // smoke-testing the engine against realistic content instead of placeholder
-// copy. Not the full content set — just enough to exercise observation,
-// fill-blank, and an emulator-judged widget end to end.
+// copy. Not the full content set — just enough to exercise every widget
+// type in the catalog end to end (full content transcription is out of
+// scope, see the app-shell task spec).
 
 import type { LevelSchema } from "./types";
 
-// L1-1 — 翻卡 (flashcard), observation widget, judge.kind: none.
+// L0-1 — 算術, fill-blank widget, judge.kind: direct. Entry point for the
+// "完全沒碰過組合語言" branch.
+export const L0_1: LevelSchema = {
+  id: "L0-1",
+  type: "fill-blank",
+  title: "暫存器就是超快的變數",
+  prompt: "用 add／addi／sub 湊出目標值：把 a0 設成 5。",
+  blanks: [{ id: "imm", answer: "5", options: ["3", "5", "7", "10"] }],
+  judge: { kind: "direct" },
+  onPass: { advance: "L0-2" },
+};
+
+// L1-1 — 翻卡 (flashcard), observation widget, judge.kind: none. Entry point
+// for the "會一點 asm/pwn，不熟 RISC-V" branch.
 export const L1_1: LevelSchema = {
   id: "L1-1",
   type: "observation",
@@ -41,6 +55,18 @@ export const L1_3: LevelSchema = {
   onPass: { advance: "L2-0", reward: "hitcon-badge" },
 };
 
+// L2-0 — 觀賞, observation widget, judge.kind: none. Entry point for the
+// "已經熟 RISC-V" branch.
+export const L2_0: LevelSchema = {
+  id: "L2-0",
+  type: "observation",
+  title: "syscall 沒有另一套規則",
+  prompt:
+    "直接借用 calling convention：a7 放服務編號，a0–a6 當參數。write(a7=64, a0=fd, a1=buf, a2=len)、open(a7=1024, a0=path, a1=flags)、read(a7=63, a0=fd, a1=buf, a2=len)。",
+  judge: { kind: "none" },
+  onPass: { advance: "L2-1" },
+};
+
 // L2-1 — 拖曳視覺化 (drag-fill widget is a stub, but the schema is complete
 // and valid), judge.kind: emulator — real判定, not string comparison.
 export const L2_1: LevelSchema = {
@@ -66,7 +92,112 @@ export const L2_1: LevelSchema = {
   onPass: { advance: "L2-2", reward: "ttussc-merch" },
 };
 
-export const sampleLevels: LevelSchema[] = [L1_1, L1_2, L1_3, L2_1];
+// L2-2 — 排序 (選配), drag-order widget, judge.kind: emulator — the ORW
+// fragments only produce the right stdout once reordered correctly and
+// actually assembled/run (see LevelPlayer.tsx's TODO on raw-input ->
+// RunRequest translation for how far that gap currently goes).
+export const L2_2: LevelSchema = {
+  id: "L2-2",
+  type: "drag-order",
+  title: "排出正確的 ORW 順序",
+  prompt: "把打散的 open／read／write 片段拖回正確順序。",
+  items: [
+    { id: "open-a7", label: "li a7, 1024   # open syscall number" },
+    { id: "open-a0", label: "la a0, path    # 檔名位址" },
+    { id: "open-ecall", label: "ecall          # 執行 open" },
+    { id: "read-a7", label: "li a7, 63     # read syscall number" },
+    { id: "read-ecall", label: "ecall          # 執行 read" },
+    { id: "write-a7", label: "li a7, 64     # write syscall number" },
+    { id: "write-ecall", label: "ecall          # 執行 write" },
+  ],
+  correctOrder: [
+    "open-a7",
+    "open-a0",
+    "open-ecall",
+    "read-a7",
+    "read-ecall",
+    "write-a7",
+    "write-ecall",
+  ],
+  judge: { kind: "emulator", expect: { stdoutContains: "flag" } },
+  onPass: { advance: "L2-3" },
+};
+
+// L2-4 — 純手寫 (選配, 完整 ORW 野心目標), freehand-editor widget,
+// judge.kind: emulator.
+export const L2_4: LevelSchema = {
+  id: "L2-4",
+  type: "freehand-editor",
+  title: "從零刻出完整 ORW",
+  prompt: 'open("flag.txt") → read → write，全部自己手寫，沒有任何 scaffold。',
+  starterCode: "# open -> read -> write, from scratch\n.text\n_start:\n",
+  judge: { kind: "emulator", expect: { stdoutContains: "flag" } },
+  onPass: { advance: "L2-5" },
+};
+
+// L2-5a — 拉桿找 offset, lever-slider widget, judge.kind: direct (target
+// defined — this is the "find the answer" instance; L3-1 reuses the same
+// component with target undefined for the "feel the wall" instance).
+export const L2_5A: LevelSchema = {
+  id: "L2-5a",
+  type: "lever-slider",
+  title: "滑到剛好蓋到 ra 的 offset",
+  prompt:
+    "拖曳輸入長度滑桿，即時視覺化 buffer → saved s0 → saved ra 被吃掉的過程。",
+  min: 0,
+  max: 64,
+  target: 40,
+  judge: { kind: "direct" },
+  onPass: { advance: "L2-5b" },
+};
+
+// L3-2 — 手動＋自動猜 canary, byte-guesser widget, judge.kind: emulator —
+// the "correct" canary bytes only come from real re-runs against the
+// vulnerable ELF (see ByteGuesserWidget.tsx's stub note).
+export const L3_2: LevelSchema = {
+  id: "L3-2",
+  type: "byte-guesser",
+  title: "猜出完整的 canary",
+  prompt:
+    "每次重跑都是全新 emulator instance：猜錯崩潰、猜對活下來繼續猜下一個 byte。手動試 1–2 byte，或一鍵自動跑完剩下的。",
+  byteCount: 4,
+  judge: { kind: "emulator", expect: { exitCode: 0 } },
+  onPass: { advance: "L3-3" },
+};
+
+// L3-4 — 觀賞＋點選串接 gadget chain, gadget-chain widget, judge.kind:
+// emulator — the final chain only counts once it's actually run and prints
+// the flag.
+export const L3_4: LevelSchema = {
+  id: "L3-4",
+  type: "gadget-chain",
+  title: "串出 ORW gadget chain",
+  prompt:
+    "buffer 塞不下完整 shellcode，也沒有 win() 可以跳——點選候選 gadget 串出 open → read → write。",
+  gadgets: [
+    { id: "g1", address: "0x10120", description: "pop a0, a1, a2; ret" },
+    { id: "g2", address: "0x10148", description: "pop a7; ret" },
+    { id: "g3", address: "0x10160", description: "ecall; ret" },
+    { id: "g4", address: "0x10188", description: "mv a0, sp; ret" },
+  ],
+  correctChain: ["g1", "g2", "g3"],
+  judge: { kind: "emulator", expect: { stdoutContains: "flag" } },
+  onPass: { advance: "L3-Bonus" },
+};
+
+export const sampleLevels: LevelSchema[] = [
+  L0_1,
+  L1_1,
+  L1_2,
+  L1_3,
+  L2_0,
+  L2_1,
+  L2_2,
+  L2_4,
+  L2_5A,
+  L3_2,
+  L3_4,
+];
 
 export const sampleLevelsById: Record<string, LevelSchema> = Object.fromEntries(
   sampleLevels.map((level) => [level.id, level]),
