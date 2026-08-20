@@ -203,6 +203,13 @@ export interface GadgetChainStep extends StepBase {
 export interface FreehandEditorStep extends StepBase {
   widgetType: "freehand-editor";
   starterCode?: string;
+  // Static files to preload into the emulator's virtual FS before running
+  // the assembled payload (see emulatorAdapter.ts's RunRequest.files) —
+  // needed when the assembled asm does a real open()/read() against a path
+  // that must actually exist, e.g. L2-4's open("flag.txt"). `contents` is
+  // plain text, UTF-8-encoded by the widget at submit time. Mirrors
+  // DragOrderStep.files above.
+  files?: Array<{ path: string; contents: string }>;
 }
 
 export type LevelStep =

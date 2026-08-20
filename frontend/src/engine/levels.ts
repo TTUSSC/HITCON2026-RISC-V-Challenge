@@ -480,23 +480,55 @@ export const L2_3: LevelSchema = {
 
 export const L2_4: LevelSchema = {
   id: "L2-4",
-  title: "從零刻出完整 ORW",
+  title: "填出完整 ORW 的 syscall",
   onPass: { advance: "L2-5a" },
   steps: [
     {
       widgetType: "observation",
       judge: { kind: "none" },
-      title: "從零手刻：沒有骨架了",
+      title: "沒教過的語法先幫你寫好，重點才是你要填的",
       prompt:
-        '前面幾關 `li a7, ___` / `ecall` 的骨架都被拿掉了，這次要自己寫出完整結構：\n- 一個 `.data` 段放檔名字串（例如 `path: .asciz "flag.txt"`）\n- 一個 `_start` 標籤開始執行\n- 依序 `open` → `read` → `write` → `exit`，各自 `li a7, N` / `ecall`\n\n`open` 拿到的 `fd` 存在 `a0`，記得先搬到別的暫存器（例如 `mv s1, a0`）再繼續用，否則下一個 syscall 會把 `a0` 蓋掉。',
+        '這關不是要你從零刻出整支程式——`.data` 段、字串宣告、`_start:` 標籤這些語法課程從來沒教過，不是這個技能樹的重點，所以已經幫你寫好：\n- `.data` 段放好 `path: .asciz "flag.txt"` 跟 `buf: .space 16`\n- `_start:` 標籤\n- `open` 這個新 syscall 已經當範例整段寫完，包含拿到 `fd` 後 `mv s1, a0` 存起來（L2-2／L2-3 用過的保護寫法，避免下一個 syscall 把 `a0` 蓋掉）\n\n真正要你自己寫的，是 `read`／`write`／`exit` 各自的 `li a7, N`（syscall 編號）跟參數暫存器（`a0`／`a1`／`a2`）——這才是「syscall + 參數準備」這個技能真正在練的部分。起始碼裡每個要填的地方都有 `# TODO` 註解標好位置。',
     },
     {
       widgetType: "freehand-editor",
-      judge: { kind: "emulator", expect: { stdoutContains: "flag" } },
-      title: "從零刻出完整 ORW",
+      judge: { kind: "emulator", expect: { stdoutContains: "TTUSSC{demo}" } },
+      title: "填出完整 ORW 的 syscall",
       prompt:
-        '`open("flag.txt")` → `read` → `write`，全部自己手寫，拿掉所有 scaffold。已經熟 RISC-V 的人可以直接跳來這裡秀操作。',
-      starterCode: "# open -> read -> write, from scratch\n.text\n_start:\n",
+        "`open` 已經幫你示範完整寫法，換你接著把 `read` → `write` → `exit` 的 syscall 編號跟參數暫存器補上去——照 `# TODO` 註解填，`.data`／`_start:` 這些骨架都不用動。",
+      starterCode:
+        ".text\n" +
+        "_start:\n" +
+        '    # ---- open("flag.txt") ----（已示範完整寫法）\n' +
+        "    li a7, 1024\n" +
+        "    la a0, path\n" +
+        "    ecall\n" +
+        "    mv s1, a0          # fd 存到 s1，避免被下一個 syscall 蓋掉\n" +
+        "\n" +
+        "    # ---- read(fd, buf, len) ----\n" +
+        "    # TODO: 填出 read 的 syscall 編號（a7）\n" +
+        "    # TODO: a0 = fd（用剛剛存的 s1）\n" +
+        "    # TODO: a1 = buf 的位址\n" +
+        "    # TODO: a2 = 長度（flag.txt 內容是 13 bytes，含換行）\n" +
+        "\n" +
+        "    # ---- write(1, buf, len) ----\n" +
+        "    # TODO: 填出 write 的 syscall 編號（a7）\n" +
+        "    # TODO: a0 = 1（stdout）\n" +
+        "    # TODO: a1 = buf 的位址\n" +
+        "    # TODO: a2 = 長度\n" +
+        "\n" +
+        "    # ---- exit(0) ----\n" +
+        "    # TODO: 填出 exit 的 syscall 編號（a7）\n" +
+        "    # TODO: a0 = 0\n" +
+        "\n" +
+        ".data\n" +
+        'path: .asciz "flag.txt"\n' +
+        "buf: .space 16\n",
+      // Same demo flag content as L2-2's fix (see that level's `files`
+      // comment) — real end-to-end open->read->write against a preloaded
+      // flag.txt, not the real event flag (still unresolved, see
+      // levels.md 待驗證/待辦).
+      files: [{ path: "flag.txt", contents: "TTUSSC{demo}\n" }],
     },
   ],
 };

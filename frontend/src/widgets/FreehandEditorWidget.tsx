@@ -12,7 +12,10 @@
 // onPass hands the resulting RunRequest up to LevelPlayer (which still owns
 // the actual emulatorAdapter.run() + judge() call — this widget only
 // produces the payload, it doesn't judge itself); on failure, the assembler's
-// per-line errors are rendered inline instead of calling onPass.
+// per-line errors are rendered inline instead of calling onPass. Also passes
+// through schema.files (see FreehandEditorStep.files in types.ts) to preload
+// the emulator's virtual FS, mirroring DragOrderWidget's files handling —
+// e.g. L2-4's open("flag.txt") needs a real flag.txt to exist.
 
 import { useState } from "react";
 import { Play, Loader2 } from "lucide-react";
@@ -40,7 +43,11 @@ export const FreehandEditorWidget: WidgetComponent<FreehandEditorStep> = ({
     }
     setError(null);
     const elf = buildElf(result.bytes, result.baseAddress, result.entry);
-    onPass({ elf });
+    const files = (schema.files ?? []).map((f) => ({
+      path: f.path,
+      data: new TextEncoder().encode(f.contents),
+    }));
+    onPass({ elf, files });
   };
 
   return (
