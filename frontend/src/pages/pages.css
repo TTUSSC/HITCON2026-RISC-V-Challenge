@@ -294,7 +294,11 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  padding: 0.5rem 0 6rem;
+  /* Horizontal gutter matches .lesson-topbar's 1.2rem so the widget card
+     below the topbar doesn't run flush to the screen edge on mobile — it
+     previously had none, so .widget's border sat directly against the
+     viewport edge with no breathing room. */
+  padding: 0.5rem 1.2rem 6rem;
 }
 
 /* About page ("/about") — repo owner's two-part scope: platform description

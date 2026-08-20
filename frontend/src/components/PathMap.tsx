@@ -115,7 +115,42 @@ export function PathMap({
         const pop = justUnlocked.has(node.id) && !prefersReducedMotion;
         return (
           <Fragment key={node.id}>
-            {i > 0 && <div className="connector" />}
+            {i > 0 && (
+              // Segment leading *into* this node — an S-curve bezier (per
+              // real Duolingo / open-source Duolingo-clone path screens,
+              // which sweep the connector between the alternating
+              // left/right node offsets rather than drawing a straight
+              // vertical bar). Colored/traveled once this node is reachable
+              // (done or current), muted grey while it still leads to a
+              // locked node — mirrors how the bubbles themselves
+              // distinguish reached vs. not-yet-reached.
+              //
+              // Direction follows the same i%2 parity the node offset below
+              // uses: an odd-index node is shifted right (marginLeft), so
+              // the curve into it sweeps left-to-right; an even-index node
+              // is shifted left (marginRight), so the curve sweeps
+              // right-to-left.
+              <svg
+                className={`connector connector-${node.state}`}
+                width="44"
+                height="34"
+                viewBox="0 0 44 34"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d={
+                    i % 2 === 1
+                      ? "M14 0 C14 17, 30 17, 30 34"
+                      : "M30 0 C30 17, 14 17, 14 34"
+                  }
+                  stroke="currentColor"
+                  strokeWidth="7"
+                  strokeLinecap="round"
+                  strokeDasharray="0.1 13.5"
+                />
+              </svg>
+            )}
             <button
               type="button"
               ref={node.state === "current" ? currentNodeRef : undefined}

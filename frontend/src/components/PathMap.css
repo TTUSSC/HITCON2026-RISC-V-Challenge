@@ -69,11 +69,26 @@
   max-width: 100px;
 }
 
+/* Beaded S-curve connector between nodes — matches how real Duolingo (and
+   the open-source Duolingo-clone path screens) sweep the connecting line
+   between alternating left/right node offsets, instead of a straight
+   vertical bar. The curve itself is drawn in PathMap.tsx as an SVG path
+   (direction mirrored per node parity); this stylesheet only owns color
+   and the "chunky" 3D pop.
+   State-aware: a segment leading into a done/current node is drawn in the
+   "traveled" mint color (this stretch of path has been reached), a segment
+   leading into a locked node stays muted in --border, matching how
+   .node.locked already reads as "not there yet". */
 .connector {
-  width: 5px;
-  height: 34px;
-  background: var(--border);
-  border-radius: 3px;
+  display: block;
+  color: var(--border);
+  overflow: visible;
+}
+
+.connector.connector-done,
+.connector.connector-current {
+  color: var(--mint);
+  filter: drop-shadow(0 2px 0 var(--mint-shadow));
 }
 
 .bubble .icon {
