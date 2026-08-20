@@ -77,25 +77,28 @@ export function LevelPage() {
     );
   }
 
-  const goTo = (nextLevelId: string | null) => {
-    if (nextLevelId === null) {
-      // Whole chain cleared — back to the map, which now shows every node
-      // in the final segment as done.
-      navigate("/path");
-      return;
-    }
-    navigate(`/level/${nextLevelId}`);
-  };
+  // A level completing (schema.onPass firing, after its LAST step's judge
+  // passes — never at a step-to-step boundary within the same level, since
+  // LevelPlayer only calls onAdvance once, at the end) always drops the
+  // player back on the path map, matching real Duolingo behavior: finishing
+  // a lesson returns you to the path screen, it never auto-opens the next
+  // one. `nextLevelId` (still threaded through from schema.onPass.advance)
+  // no longer drives navigation here — PathMap's own reachability logic
+  // already derives which node unlocks next from sessionStore's passedAt
+  // events, not from this value — but it's kept on PassInfo for now in case
+  // a future "peek at what's next" affordance wants it.
+  const goToPathMap = () => navigate("/path");
 
   // Only reward-granting passes get the full celebration beat — inserting a
   // "繼續" click after every micro-step (most levels are single-concept
   // fill-blanks/observations) would eat into the 3–5 分鐘 booth budget the
   // whole level design is built around (see levels.md 前提與限制). Passes
-  // without a reward just advance immediately, same as before.
+  // without a reward just return to the path map immediately, same as
+  // before.
   const handleAdvance = (nextLevelId: string | null) => {
     const reward = schema.onPass.reward;
     if (!reward) {
-      goTo(nextLevelId);
+      goToPathMap();
       return;
     }
     // Date.now() here runs inside an event handler (LevelPlayer's onAdvance
@@ -112,9 +115,8 @@ export function LevelPage() {
 
   const handleContinue = () => {
     if (!passInfo) return;
-    const { nextLevelId } = passInfo;
     setPassInfo(null);
-    goTo(nextLevelId);
+    goToPathMap();
   };
 
   // Slim progress bar in the top bar reflects position within the CURRENT
