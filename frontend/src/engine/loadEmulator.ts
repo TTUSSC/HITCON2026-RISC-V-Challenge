@@ -94,6 +94,16 @@ type ExitListener = (status: number) => void;
 let currentStdoutSink: PrintSink | null = null;
 let currentExitListener: ExitListener | null = null;
 let modulePromise: Promise<RV32EmuModule> | null = null;
+let moduleReady = false;
+
+/** True once loadEmulator()'s promise has actually resolved (the 7.1MB WASM
+ * binary is fetched + instantiated + onRuntimeInitialized has fired) — false
+ * before the first call and while the very first load is still in flight.
+ * Callers use this to distinguish a genuine first-run load from a cached,
+ * effectively-instant subsequent run (see RunStatusTicker.tsx). */
+export function isEmulatorReady(): boolean {
+  return moduleReady;
+}
 
 export function setStdoutSink(sink: PrintSink | null): void {
   currentStdoutSink = sink;
@@ -125,7 +135,10 @@ export function loadEmulator(): Promise<RV32EmuModule> {
       print: (text: string) => currentStdoutSink?.(text),
       printErr: (text: string) => currentStdoutSink?.(`[stderr] ${text}`),
       onExit: (status: number) => currentExitListener?.(status),
-      onRuntimeInitialized: () => resolve(window.Module as RV32EmuModule),
+      onRuntimeInitialized: () => {
+        moduleReady = true;
+        resolve(window.Module as RV32EmuModule);
+      },
       canvas: document.getElementById("canvas") as HTMLCanvasElement,
     };
     window.Module = seed;

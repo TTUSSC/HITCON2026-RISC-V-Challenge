@@ -118,7 +118,21 @@
    the widget's own primary CTA gets this treatment (scoped to a direct
    child of .widget rendered inside the lesson body) — PassMoment's
    "繼續" button also uses .widget-primary-btn but lives in its own overlay
-   card, so it's unaffected by this selector. */
+   card, so it's unaffected by this selector.
+
+   Stays `position: fixed` (NOT `sticky` — tried it, but `.widget` is a
+   shrink-wrapped card, not a full-viewport-height box, so a sticky button
+   would just sit at the bottom of the card's own content instead of the
+   real viewport bottom on short widgets, e.g. a 4-option fill-blank).
+   Correctness here instead depends on nothing between this button and the
+   viewport ever getting a `transform` (or `filter`/`perspective`/`contain`)
+   applied — any of those on ANY ancestor, even `.widget` itself, becomes
+   this button's containing block per the CSS spec and yanks it out of its
+   fixed-to-viewport position. That's why the wrong/correct shake-bounce
+   feedback (see LevelPlayer.tsx + the `.widget-feedback-wrap[data-submit-
+   state]` rules below) animates `.widget`'s individual children via
+   `:not(.widget-primary-btn)` instead of transforming `.widget` or
+   `.widget-feedback-wrap` themselves. */
 .lesson-body .widget > .widget-primary-btn {
   position: fixed;
   left: 0;
@@ -471,14 +485,70 @@
   }
 }
 
-/* Wraps every step's <Widget> (see LevelPlayer.tsx) — a plain block so it
-   doesn't fight the widget's own layout, just a motion target for the
-   shake/bounce submit-state feedback. */
+/* Wraps every step's <Widget> (see LevelPlayer.tsx) — a plain block, not
+   itself a shake/bounce transform target (see the .widget-primary-btn
+   comment above for why: transforming this, or `.widget`, would hijack the
+   fixed-positioned submit button's containing block and make it jump). */
 .widget-feedback-wrap {
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+/* Wrong/correct feedback: shakes or bounces every direct child of `.widget`
+   EXCEPT the fixed-position submit button, driven by the `data-submit-
+   state` attribute LevelPlayer.tsx sets on `.widget-feedback-wrap`. Since
+   every animated child shares the same keyframes/timing, they move in
+   lockstep and read as one rigid card shaking/bouncing, without ever
+   putting a `transform` on `.widget` itself (see above). Skipped entirely
+   under reduced motion — LevelPlayer.tsx swaps in a plain opacity pulse on
+   `.widget-feedback-wrap` instead (opacity never affects a fixed
+   descendant's containing block, so it's always safe there). */
+@media (prefers-reduced-motion: no-preference) {
+  .widget-feedback-wrap[data-submit-state="wrong"]
+    .widget
+    > *:not(.widget-primary-btn) {
+    animation: widget-content-shake 0.4s ease;
+  }
+
+  .widget-feedback-wrap[data-submit-state="correct"]
+    .widget
+    > *:not(.widget-primary-btn) {
+    animation: widget-content-bounce 0.4s ease;
+  }
+}
+
+@keyframes widget-content-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-10px);
+  }
+  40% {
+    transform: translateX(10px);
+  }
+  60% {
+    transform: translateX(-8px);
+  }
+  80% {
+    transform: translateX(8px);
+  }
+}
+
+@keyframes widget-content-bounce {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.045);
+  }
+  70% {
+    transform: scale(0.99);
+  }
 }
 
 /* "再試一次" inline banner shown on a wrong answer — not blocking, sits

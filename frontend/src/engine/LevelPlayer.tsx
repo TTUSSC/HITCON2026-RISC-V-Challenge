@@ -27,6 +27,7 @@ import { widgetRegistry } from "./widgetRegistry";
 import type { WidgetComponent } from "./widgetDefinition";
 import type { SubmitState } from "./submitState";
 import { SubmitStateContext } from "./submitState";
+import { RunStatusTicker } from "../components/RunStatusTicker";
 
 // How long the 'wrong'/'correct' feedback state lingers before resetting
 // (wrong -> back to 'idle' so the player can immediately retry) or advancing
@@ -176,19 +177,27 @@ export function LevelPlayer({
 
   // Shake on wrong, a satisfying pop/bounce on correct — a plain style-class
   // swap would be an instant snap, not the "deliberate small motion" the
-  // design calls for (see docs/design/STYLE.md's 動畫 section). Reduced to a
-  // opacity-only pulse under prefers-reduced-motion (useReducedMotion()
-  // above) instead of the x-shake/scale-bounce, per that same section's
-  // accessibility note.
+  // design calls for (see docs/design/STYLE.md's 動畫 section). This used to
+  // be a framer-motion x-shake/scale-bounce applied straight to this wrap —
+  // but `.widget-primary-btn` (rendered inside <Widget>, so a descendant of
+  // this wrap) is `position: fixed`, and CSS makes ANY transformed ancestor
+  // the containing block for a fixed descendant. That reanchored the button
+  // to this wrap's own (much smaller) box for the animation's duration,
+  // making it visibly jump — see widgets.css's `.widget-primary-btn`
+  // comment. The actual shake/bounce now lives in pure CSS
+  // (`.widget-feedback-wrap[data-submit-state=...] .widget >
+  // *:not(.widget-primary-btn)` in widgets.css), which animates `.widget`'s
+  // children individually instead of transforming any ancestor of the
+  // button. This wrap only still needs the opacity pulse for reduced
+  // motion (useReducedMotion() above) — opacity never hijacks a fixed
+  // descendant's containing block, so it's always safe here, and the CSS
+  // shake/bounce rules are themselves scoped to
+  // `prefers-reduced-motion: no-preference` as a second guard.
   const feedbackAnimate = prefersReducedMotion
     ? {
         opacity: submitState === "wrong" || submitState === "correct" ? 0.7 : 1,
       }
-    : submitState === "wrong"
-      ? { x: [0, -10, 10, -8, 8, -4, 4, 0] }
-      : submitState === "correct"
-        ? { scale: [1, 1.045, 0.99, 1] }
-        : { x: 0, scale: 1 };
+    : { opacity: 1 };
 
   return (
     <SubmitStateContext.Provider value={submitState}>
@@ -199,6 +208,7 @@ export function LevelPlayer({
         transition={{ duration: prefersReducedMotion ? 0.15 : 0.4 }}
       >
         <Widget schema={step} onPass={handleStepPass} />
+        {submitState === "running" && <RunStatusTicker />}
         <AnimatePresence>
           {submitState === "wrong" && (
             <motion.div
