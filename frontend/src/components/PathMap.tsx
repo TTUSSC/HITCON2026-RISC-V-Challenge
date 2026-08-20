@@ -5,8 +5,9 @@
 // branch's ordered id list has passedAt set; the first not-yet-passed node
 // is "current", everything after it is "locked".
 
-import { Fragment, useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Check, Lock } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { useSessionStore } from "../engine/sessionStore";
 import "./PathMap.css";
 
@@ -62,36 +63,72 @@ export function PathMap({ levelIds, captions, onSelectLevel }: PathMapProps) {
     // passing a level and coming back), not on every unrelated re-render.
   }, [currentNodeId]);
 
+  // Tracks each node's state as of the *previous* render so a locked ->
+  // current/done transition (a level just got passed and the player landed
+  // back on /path — see sessionStore's recordPass) can be told apart from
+  // "this node was already unlocked, nothing to animate" on every other
+  // render. Uses the same "adjust state during render" pattern as
+  // trackedLevelId in LevelPlayer.tsx (not a ref+effect) — reading a ref
+  // during render to compute justUnlocked is exactly the footgun
+  // react-hooks/refs is there to catch. Starts empty so the very first
+  // render (initial page load) never pops in nodes that were unlocked from
+  // the start.
+  const [prevStates, setPrevStates] = useState<Record<string, NodeState>>({});
+  const statesKey = nodes.map((n) => `${n.id}:${n.state}`).join(",");
+  const [trackedStatesKey, setTrackedStatesKey] = useState(statesKey);
+  let justUnlocked = new Set<string>();
+  if (trackedStatesKey !== statesKey) {
+    justUnlocked = new Set(
+      nodes
+        .filter((n) => prevStates[n.id] === "locked" && n.state !== "locked")
+        .map((n) => n.id),
+    );
+    setTrackedStatesKey(statesKey);
+    const next: Record<string, NodeState> = {};
+    for (const node of nodes) next[node.id] = node.state;
+    setPrevStates(next);
+  }
+
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <div className="path">
-      {nodes.map((node, i) => (
-        <Fragment key={node.id}>
-          {i > 0 && <div className="connector" />}
-          <button
-            type="button"
-            ref={node.state === "current" ? currentNodeRef : undefined}
-            className={`node ${node.state}`}
-            disabled={node.state === "locked"}
-            data-level-id={node.id}
-            onClick={() => onSelectLevel?.(node.id)}
-            style={{
-              marginLeft: i % 2 === 1 ? "1.4rem" : undefined,
-              marginRight: i % 2 === 0 ? "1.4rem" : undefined,
-            }}
-          >
-            <div className="bubble">
-              {node.state === "done" ? (
-                <Check className="icon" />
-              ) : node.state === "locked" ? (
-                <Lock className="icon" />
-              ) : (
-                node.id
-              )}
-            </div>
-            <div className="caption">{captions?.[node.id] ?? node.id}</div>
-          </button>
-        </Fragment>
-      ))}
+      {nodes.map((node, i) => {
+        const pop = justUnlocked.has(node.id) && !prefersReducedMotion;
+        return (
+          <Fragment key={node.id}>
+            {i > 0 && <div className="connector" />}
+            <button
+              type="button"
+              ref={node.state === "current" ? currentNodeRef : undefined}
+              className={`node ${node.state}`}
+              disabled={node.state === "locked"}
+              data-level-id={node.id}
+              onClick={() => onSelectLevel?.(node.id)}
+              style={{
+                marginLeft: i % 2 === 1 ? "1.4rem" : undefined,
+                marginRight: i % 2 === 0 ? "1.4rem" : undefined,
+              }}
+            >
+              <motion.div
+                className="bubble"
+                initial={pop ? { scale: 0.4, opacity: 0 } : false}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 420, damping: 16 }}
+              >
+                {node.state === "done" ? (
+                  <Check className="icon" />
+                ) : node.state === "locked" ? (
+                  <Lock className="icon" />
+                ) : (
+                  node.id
+                )}
+              </motion.div>
+              <div className="caption">{captions?.[node.id] ?? node.id}</div>
+            </button>
+          </Fragment>
+        );
+      })}
     </div>
   );
 }
