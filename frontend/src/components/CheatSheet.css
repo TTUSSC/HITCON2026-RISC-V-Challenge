@@ -1,0 +1,138 @@
+/* CheatSheet — bottom sheet, token-driven, matches RegisterBank/widgets'
+   visual language (rounded cards, --border outlines, --font-mono for
+   code/register text). Slides up over the lesson body without unmounting
+   LevelPlayer underneath (see CheatSheet.tsx file header). */
+
+.cheatsheet-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 150;
+}
+
+.cheatsheet-sheet {
+  width: 100%;
+  max-width: 32rem;
+  max-height: 80vh;
+  background: var(--bg-raised);
+  border-radius: 24px 24px 0 0;
+  border: 3px solid var(--sky);
+  border-bottom: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cheatsheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.2rem 0.6rem;
+  border-bottom: 2px dashed var(--border);
+  flex-shrink: 0;
+}
+
+.cheatsheet-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--sky-deep);
+}
+
+.cheatsheet-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 999px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cheatsheet-close-btn:hover {
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+
+.cheatsheet-body {
+  overflow-y: auto;
+  padding: 0.9rem 1.2rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.cheatsheet-section h3 {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 0.5rem;
+}
+
+.cheatsheet-hint {
+  margin: 0 0 0.6rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.cheatsheet-hint code {
+  font-family: var(--font-mono);
+  color: var(--sky-deep);
+}
+
+.cheatsheet-table {
+  display: flex;
+  flex-direction: column;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.cheatsheet-row {
+  display: grid;
+  grid-template-columns: 4.5rem 3rem 1fr;
+  gap: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.cheatsheet-table-instr .cheatsheet-row {
+  grid-template-columns: 11rem 1fr;
+}
+
+.cheatsheet-table-registers .cheatsheet-row {
+  grid-template-columns: 5.5rem 1fr;
+}
+
+.cheatsheet-row + .cheatsheet-row {
+  border-top: 1px solid var(--border);
+}
+
+.cheatsheet-row-head {
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.cheatsheet-mono {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-word;
+}

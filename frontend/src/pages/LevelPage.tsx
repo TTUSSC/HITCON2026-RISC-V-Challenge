@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { X } from "lucide-react";
+import { BookOpen, X } from "lucide-react";
 import { LevelPlayer } from "../engine/LevelPlayer";
 import { levelsById } from "../engine/levels";
 import { useSessionStore } from "../engine/sessionStore";
@@ -15,6 +15,7 @@ import { isLevelReachable } from "../engine/progression";
 import type { LevelSchema } from "../engine/types";
 import { PassMoment } from "../components/PassMoment";
 import { LevelCompleteCard } from "../components/LevelCompleteCard";
+import { CheatSheet } from "../components/CheatSheet";
 import "./pages.css";
 
 // Indirection point: full-content schema source generated from
@@ -64,6 +65,10 @@ export function LevelPage() {
   // — reported by LevelPlayer on mount/step-change, not derived from the
   // branch's flat level list anymore (see LevelPlayer.tsx's onStepChange).
   const [stepProgress, setStepProgress] = useState({ index: 0, total: 1 });
+  // Cheat sheet is a sibling overlay, not a route change — LevelPlayer below
+  // it never unmounts while this toggles, so in-progress widget state (e.g.
+  // partially-typed freehand code) survives open/close for free.
+  const [cheatSheetOpen, setCheatSheetOpen] = useState(false);
 
   const schema = levelId ? getLevelSchema(levelId) : undefined;
 
@@ -169,6 +174,14 @@ export function LevelPage() {
             style={{ width: `${progressPercent}%` }}
           />
         </div>
+        <button
+          type="button"
+          className="lesson-cheatsheet-btn"
+          onClick={() => setCheatSheetOpen(true)}
+          aria-label="開啟速查表"
+        >
+          <BookOpen size={20} />
+        </button>
       </div>
       <div className="lesson-body">
         <LevelPlayer
@@ -177,6 +190,10 @@ export function LevelPage() {
           onStepChange={(index, total) => setStepProgress({ index, total })}
         />
       </div>
+      <CheatSheet
+        open={cheatSheetOpen}
+        onClose={() => setCheatSheetOpen(false)}
+      />
       {passInfo && (
         <PassMoment
           message={passInfo.message}
