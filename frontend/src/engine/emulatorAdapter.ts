@@ -87,6 +87,27 @@ export async function run(request: RunRequest): Promise<EmulatorResult> {
   return {
     exitCode,
     stdout: stdoutLines.join("\n"),
-    registers: {},
+    registers: parseRegisterLines(stdoutLines),
   };
+}
+
+// The real rv32emu WASM build exports no register-accessor (verified by
+// grepping rv32emu.js / the rv32emu C sources for EMSCRIPTEN_KEEPALIVE
+// exports — only indirect_rv_alive/halt/cleanup/stop_requested exist), so
+// there's no way to read CPU state out of the running/exited instance
+// directly. Register-checking test programs (assembler/registerProbe.ts)
+// work around this by having the *guest* program itself print "reg=value"
+// to stdout via a real write syscall; this parses any such lines back into
+// a Record, so callers see `result.registers["a0"]` same as a real read
+// would have produced. Lines that don't match the pattern (e.g. ordinary
+// program stdout like L2-1's "HI") are simply not registers.
+const REGISTER_LINE = /^([a-z][a-z0-9]*)=(-?\d+)$/;
+
+function parseRegisterLines(lines: string[]): Record<string, number> {
+  const registers: Record<string, number> = {};
+  for (const line of lines) {
+    const m = REGISTER_LINE.exec(line.trim());
+    if (m) registers[m[1]] = Number(m[2]);
+  }
+  return registers;
 }
