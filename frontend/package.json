@@ -11,10 +11,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/sortablejs": "^1.15.9",
     "lucide-react": "^1.33.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2",
+    "react-sortablejs": "^6.1.4",
+    "sortablejs": "^1.15.7",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

@@ -1,9 +1,7 @@
-/* Shared widget presentation layer — token-driven only. This is styling
-   for the two widgets currently wired up (Observation, FillBlank); the
-   other widget stubs are still unstyled placeholders. Don't move judging
-   or interaction logic in here — see platform-architecture.md's
-   "跟工程實作的分工" note: CSS layer changes when the visual identity
-   changes, widget DOM/logic doesn't. */
+/* Shared widget presentation layer — token-driven only. Covers all 8
+   widgets in the catalog. Don't move judging or interaction logic in here —
+   see platform-architecture.md's "跟工程實作的分工" note: CSS layer changes
+   when the visual identity changes, widget DOM/logic doesn't. */
 
 .widget {
   max-width: 32rem;
@@ -93,4 +91,372 @@
   border-color: var(--sky-deep);
   background: var(--sky);
   color: #fff;
+}
+
+/* Secondary button — same 3D-press language as .widget-primary-btn, sky
+   accent instead of mint so it reads as "alternate action" (e.g. byte-
+   guesser's auto-solve) rather than the main submit. */
+.widget-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 12px;
+  background: var(--sky);
+  color: #fff;
+  border-bottom: 4px solid var(--sky-shadow);
+  cursor: pointer;
+  margin: 12px 0;
+}
+
+.widget-secondary-btn:active {
+  border-bottom-width: 1px;
+  transform: translateY(3px);
+}
+
+.widget-secondary-btn:disabled {
+  background: var(--bg-sunken);
+  border-bottom-color: var(--border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.widget-primary-btn,
+.widget-secondary-btn {
+  gap: 6px;
+}
+
+/* drag-order */
+.drag-order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.drag-order-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: var(--text);
+  cursor: grab;
+}
+
+.drag-order-item:active {
+  cursor: grabbing;
+}
+
+.drag-order-handle {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* drag-fill */
+.drag-fill-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.drag-fill-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 96px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.drag-fill-slot[aria-pressed="true"] {
+  border-color: var(--rice-deep);
+  background: var(--rice);
+}
+
+.drag-fill-slot[data-filled="true"] {
+  border-color: var(--mint-deep);
+}
+
+.drag-fill-slot-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.drag-fill-slot-value {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.drag-fill-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.drag-fill-option {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.drag-fill-option:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* lever-slider */
+.lever-slider-readout {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--sky-deep);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.lever-slider {
+  width: 100%;
+  accent-color: var(--rice-deep);
+  margin-bottom: 4px;
+}
+
+.lever-slider-bounds {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+/* byte-guesser */
+.byte-guesser-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.byte-guesser-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.byte-guesser-index {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  min-width: 64px;
+}
+
+.byte-guesser-input {
+  width: 64px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+}
+
+.byte-guesser-guess-btn {
+  font-family: var(--font-body);
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 2px solid var(--sky-deep);
+  background: var(--sky);
+  color: #fff;
+  cursor: pointer;
+}
+
+.byte-guesser-guess-btn:disabled {
+  border-color: var(--border);
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.byte-guesser-solved {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--mint-deep);
+}
+
+.byte-guesser-history {
+  margin-bottom: 16px;
+}
+
+.byte-guesser-history h3 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  margin: 0 0 6px;
+  color: var(--text);
+}
+
+.byte-guesser-history ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.byte-guesser-history li[data-correct="true"] {
+  color: var(--mint-deep);
+}
+
+.byte-guesser-history li[data-correct="false"] {
+  color: var(--coral-deep);
+}
+
+.spin {
+  animation: widget-spin 0.8s linear infinite;
+}
+
+@keyframes widget-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* gadget-chain */
+.gadget-chain-current {
+  margin-bottom: 16px;
+}
+
+.gadget-chain-current h3,
+.gadget-chain-candidates h3 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.gadget-chain-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.gadget-chain-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.gadget-chain-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--rice);
+  color: var(--coffee);
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+.gadget-chain-chip-address {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--rice-shadow);
+}
+
+.gadget-chain-remove {
+  margin-left: auto;
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  color: var(--coffee);
+  cursor: pointer;
+  padding: 2px;
+}
+
+.gadget-chain-candidates {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.gadget-chain-candidate {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.gadget-chain-candidate:hover {
+  border-color: var(--sky-deep);
+}
+
+.gadget-chain-candidate-address {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--sky-deep);
+  flex-shrink: 0;
+}
+
+/* freehand-editor */
+.freehand-editor-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  resize: vertical;
+  margin-bottom: 16px;
+}
+
+/* stub placeholder (widgets not yet implemented) */
+.widget-stub .stub-notice {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--coral-deep);
 }

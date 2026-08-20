@@ -42,6 +42,15 @@ export function LevelPlayer({ schema, onAdvance }: LevelPlayerProps) {
   ] as unknown as WidgetComponent<LevelSchema>;
 
   const handlePass = async (rawInput: unknown) => {
+    // TODO: rawInput here is whatever the widget's onPass handed back raw
+    // (e.g. drag-fill's Record<slotId, value> assignments, or
+    // freehand-editor's plain source string) — it is NOT yet a RunRequest
+    // with real assembled ELF bytes. Turning widget-specific raw input into
+    // an actual emulator payload (assemble the asm, lay out the register
+    // slots, produce a Uint8Array ELF) is still an open design question and
+    // out of scope for the widget-implementation pass that added drag-fill/
+    // freehand-editor — see docs/design/platform-architecture.md's judge
+    // engine section. The cast below is a placeholder until that's designed.
     const judgeInput =
       schema.judge.kind === "emulator"
         ? await runEmulator(rawInput as RunRequest)
