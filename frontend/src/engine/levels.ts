@@ -57,21 +57,70 @@ export const L0_1: LevelSchema = {
   // header's Reward mapping note) so badge timing is consistent regardless
   // of entry point.
   onPass: { advance: "L0-2" },
+  // 6-step sequence per docs/design/cogload-review-L0.md's L0-1 proposal:
+  // one named storage box -> the special x0 box -> one worked addi -> a
+  // low-load fill-the-immediate practice -> a result observation showing
+  // the real post-run value -> a transfer-practice retrieval rep. `add`/
+  // `sub` are deliberately deferred to a later level with their own worked
+  // example (the review's explicit call-out against front-loading them
+  // here).
   steps: [
     {
       widgetType: "observation",
       judge: { kind: "none" },
-      title: "暫存器就是超快的變數",
+      title: "一個有名字的箱子",
       prompt:
-        "RISC-V 用 `add`／`addi`／`sub` 做加減。`addi a0, x0, 5` 的意思是「把 `a0` 設成 `x0` 加 5」——`x0` 永遠是 0，所以其實就是把 `a0` 設成 5。\n\n指令格式固定是**「動作 目的地, 來源, 立即值」**，接下來換你選出正確的立即值。",
+        "RISC-V 有 32 個**暫存器（register）**，每個都是一個能裝一個數字的箱子，而且都有名字。先認識第一個：`a0`。現在它還沒被設定過，是空的。",
+      registerContext: ["a0"],
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "特殊的 x0：永遠是 0",
+      prompt:
+        "再認識第二個箱子：`x0`。它跟 `a0` 不一樣的地方是：`x0` 永遠裝著 **0**，寫都寫不進去，之後會常常拿它當「0」用。",
+      registerContext: ["x0", "a0"],
+      registerLabels: { x0: "0" },
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "第一行指令：addi",
+      prompt:
+        "`addi a0, x0, 3` 的意思是「把 **a0** 設成 **x0** 加 **3**」。指令格式固定是**「動作 目的地, 來源, 立即值」**。`x0` 是 0，所以這行等於直接把 `a0` 設成 3：",
+      registerContext: ["x0", "a0"],
+      registerLabels: { x0: "0" },
+      registerAfter: { a0: "3" },
     },
     {
       widgetType: "fill-blank",
       judge: { kind: "emulator", expect: { registers: { a0: 5 } } },
-      title: "把 a0 設成 5",
-      prompt: "從少數選項中選填空湊出目標值：把 `a0` 設成 **5**。",
+      title: "換你填立即值",
+      prompt: "跟剛剛那行一樣的指令形狀，這次把 `a0` 設成 **5**：",
       asmLines: ["addi a0, x0, {{imm}}"],
+      registerContext: ["x0", "a0"],
+      registerBefore: { x0: "0" },
       blanks: [{ id: "imm", answer: "5", options: ["3", "5", "7", "10"] }],
+      checkRegister: "a0",
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "剛剛真的執行了",
+      prompt:
+        "上一步不是猜答案而已，組出來的指令真的在模擬器上跑過一次。`a0` 現在真的裝著 **5**，這是實際執行後的結果：",
+      registerContext: ["a0"],
+      registerAfter: { a0: "5" },
+    },
+    {
+      widgetType: "fill-blank",
+      judge: { kind: "emulator", expect: { registers: { a0: 9 } } },
+      title: "再練一次同樣的形狀",
+      prompt: "同樣的指令形狀，這次把 `a0` 設成 **9**：",
+      asmLines: ["addi a0, x0, {{imm}}"],
+      registerContext: ["x0", "a0"],
+      registerBefore: { x0: "0" },
+      blanks: [{ id: "imm", answer: "9", options: ["6", "8", "9", "12"] }],
       checkRegister: "a0",
     },
   ],
@@ -81,30 +130,95 @@ export const L0_2: LevelSchema = {
   id: "L0-2",
   title: "li／mv 其實是假指令",
   onPass: { advance: "L0-3" },
+  // 6-step sequence per cogload-review-L0.md's L0-2 proposal, plus the
+  // owner's two "Additional owner feedback" asks folded in: step 3 now
+  // drives the RegisterBank before/after visual side-by-side for both
+  // spellings (so the li/addi and mv/addi equivalence is *seen*, not
+  // stated), and a 7th observation-only jal/jalr exposition screen (no
+  // grading, matching the owner's "exposition, not deep practice" ask)
+  // grounds `ret`'s preview from step 6 with an actual referent via
+  // CodeTrace, reused ahead of L0-4's own branch content.
   steps: [
     {
       widgetType: "observation",
       judge: { kind: "none" },
-      title: "li／mv／nop／ret 都是假指令",
+      title: "li 把一個值放進箱子",
       prompt:
-        "CPU 實際上沒有 `li`／`mv` 這兩個指令——組譯器會偷偷把它們展開成真正的指令：\n- `li a0, 5` 展開成 `addi a0, x0, 5`（跟 `x0` 加 5）\n- `mv a0, a1` 展開成 `addi a0, a1, 0`（跟 `a1` 加 0）\n\n這種「寫起來像指令、實際是別的指令的縮寫」叫**假指令（pseudo-instruction）**，`nop`（什麼都不做）跟 `ret`（跳回呼叫者）也是同一種把戲，之後會遇到。",
+        "`li a0, 5` 把 `a0` 直接設成 **5**。這是這一關認識的第一個動作：把選好的值放進一個箱子。",
+      registerContext: ["a0"],
+      registerAfter: { a0: "5" },
+    },
+    {
+      widgetType: "fill-blank",
+      judge: { kind: "emulator", expect: { registers: { a0: 8 } } },
+      title: "換你用 li",
+      prompt: "用 `li` 把 `a0` 設成 **8**：",
+      asmLines: ["li a0, {{imm}}"],
+      registerContext: ["a0"],
+      blanks: [{ id: "imm", answer: "8", options: ["6", "8", "10", "12"] }],
+      checkRegister: "a0",
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "縮寫 vs. 展開：一模一樣的結果",
+      prompt:
+        "CPU 實際上沒有 `li` 這個指令，組譯器會把它偷偷展開成 `addi`。把兩種寫法擺在一起看暫存器的前後狀態，一模一樣：\n\n`li a0, 5` 執行後：",
+      registerContext: ["a0"],
+      registerAfter: { a0: "5" },
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "縮寫 vs. 展開（續）",
+      prompt:
+        "`addi a0, x0, 5` 執行後，跟上一步的 `li a0, 5` 完全沒有差別。這就是「為什麼可以這樣縮寫」：對 CPU 來說這兩行是同一件事，`li` 只是給人看的方便寫法，這種寫法叫**假指令（pseudo-instruction）**。",
+      registerContext: ["x0", "a0"],
+      registerLabels: { x0: "0" },
+      registerAfter: { a0: "5" },
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "mv 複製，不會清空來源",
+      prompt:
+        "`mv a0, a1` 把 `a1` 的值複製到 `a0`，`a1` 自己維持不變。複製前 `a1` 已經是 7、`a0` 還沒設定：",
+      registerContext: ["a1", "a0"],
+      registerLabels: { a1: "7" },
+      registerAfter: { a1: "7", a0: "7" },
     },
     {
       widgetType: "fill-blank",
       judge: { kind: "emulator", expect: { registers: { a0: 7 } } },
       title: "用 mv 複製暫存器",
-      prompt:
-        "`a1` 已經被設成 **7**，用 `mv` 把 `a1` 的值複製到 `a0`（等於是 `addi a0, a1, 0` 的簡寫）：",
-      asmLines: ["mv a0, {{src}}"],
-      // a1 is pre-loaded with a known value (7) so only the correct base
-      // (a1) reproduces it in a0 — the other options land on a1/a2/ra's
-      // actual reset state (0), which fails the register check just as
-      // wrong answers should.
+      prompt: "`a1` 已經被設成 **7**（下面看得到），用 `mv` 把它複製到 `a0`：",
+      asmLines: ["li a1, 7", "mv a0, {{src}}"],
+      // Options limited to registers already visible on screen (a0/a1/x0)
+      // instead of introducing a2/the zero alias/ra together, per the
+      // review's exact call-out against untaught distractor identities.
       setupAsmTemplate: "li a1, 7\nmv a0, {{src}}",
       checkRegister: "a0",
-      blanks: [
-        { id: "src", answer: "a1", options: ["a1", "a2", "zero", "ra"] },
-      ],
+      registerContext: ["a1", "a0"],
+      registerBefore: { a1: "7" },
+      blanks: [{ id: "src", answer: "a1", options: ["a1", "a0", "x0"] }],
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "跳躍：下一步不是往下一行，而是換位置",
+      prompt:
+        "一般指令執行完會往下一行走。**跳躍（jump）指令不一樣**：`jal ra, callee` 執行完，下一步直接換成 `callee` 這個位置，同時把「原本該回去的位置」記在 `ra`。之後看到的 `ret`，其實就是 `jalr x0, ra, 0`，跳回 `ra` 記住的那個位置：",
+      codeTrace: {
+        lines: [
+          { id: "call", text: "jal ra, callee" },
+          { id: "after-call", text: "…（呼叫者接下來的程式碼）" },
+          { id: "callee", text: "…（callee 的程式碼）", label: "callee:" },
+          { id: "ret", text: "ret", label: "" },
+        ],
+        currentLineId: "call",
+        fallthroughLineId: "after-call",
+        takenLineId: "callee",
+      },
     },
   ],
 };
@@ -113,36 +227,189 @@ export const L0_3: LevelSchema = {
   id: "L0-3",
   title: "暫存器帶不下所有東西，要跟記憶體借",
   onPass: { advance: "L0-4" },
+  // 9-step sequence per cogload-review-L0.md's L0-3 proposal — the review's
+  // single biggest structural change: two storage spaces -> an address is a
+  // location value -> worked zero-offset load -> base practice -> word size
+  // -> worked nonzero-offset load -> offset practice -> sw reverses the
+  // arrow -> a final load-or-store practice. Every practice step keeps the
+  // register+memory diagram it needs on screen (the review's exact
+  // complaint about L0-3's old version: the hidden setup's register-to-
+  // address mapping was never shown).
   steps: [
     {
       widgetType: "observation",
       judge: { kind: "none" },
-      title: "跟記憶體借一格",
+      title: "兩種儲存空間",
       prompt:
-        "暫存器只有 32 個，帶不下所有東西，要跟記憶體借。**`lw`（load word）跟 `sw`（store word）** 是讀寫記憶體的一對指令，語法都是 `offset(base)`：\n- `lw a0, 0(a1)` ——從 `a1` 這個位址往後 0 個 byte，讀 4 個 byte 進 `a0`\n- `sw a0, 0(a1)` ——把 `a0` 的值寫到 `a1` 指到的位址\n\noffset 可以不是 0，例如 `lw a0, 4(a1)` 是往後跳 4 個 byte 再讀。",
+        "暫存器只有 32 個，帶不下所有東西，這時候要跟**記憶體（memory）**借空間。記憶體是一長排格子，每個格子都有自己的**位址（address）**，暫存器跟記憶體是兩種不同的儲存空間。",
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "位址本身也是一個數字",
+      prompt:
+        "`a1` 這個暫存器裡裝的不是 42 本身，而是**42 那個值放在哪裡的位址**。位址指向的那個記憶體格子，內容才是 42：",
+      memoryVisual: {
+        baseRegister: "a1",
+        baseValue: "→",
+        cells: [{ offset: 0, value: "42" }],
+        highlightOffset: 0,
+      },
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "第一次 load：lw",
+      prompt:
+        "`lw a0, 0(a1)` 的語法是 `offset(base)`：從 `a1` 這個位址往後 0 個 byte，把值讀進 `a0`。執行前 `a0` 是空的，執行後變成 42：",
+      registerContext: ["a0"],
+      registerAfter: { a0: "42" },
+      memoryVisual: {
+        baseRegister: "a1",
+        baseValue: "→",
+        cells: [{ offset: 0, value: "42" }],
+        highlightOffset: 0,
+        direction: "load",
+        targetRegister: "a0",
+      },
     },
     {
       widgetType: "fill-blank",
       judge: { kind: "emulator", expect: { registers: { a0: 42 } } },
       title: "選出正確的 base 暫存器",
-      prompt: "位址在 `a1`，從選項中選出補完讀值到 `a0` 的指令：",
+      prompt: "位址在 `a1`（下面看得到），從選項中選出補完讀值到 `a0` 的指令：",
       asmLines: ["lw a0, 0({{base}})"],
-      // Each candidate base register points at a distinct known word — only
-      // a1 points at the word holding 42, so wrong choices load a different
-      // (wrong) value instead of crashing on an invalid address.
+      // a2 points at a *different* known word so picking it is a distinct
+      // wrong outcome (a0 ends at 17, not 42) rather than a crash — and
+      // deliberately not offered as a0 itself, since a0 is this step's load
+      // destination and reusing it as a base-register distractor would ask
+      // the learner to juggle operand role vs. permanent register identity
+      // in the same instruction (see the review's exact call-out on this).
       setupAsmTemplate:
-        "la a1, __l03_correct\n" +
-        "la a0, __l03_wrong_a\n" +
-        "la a2, __l03_wrong_b\n" +
-        "la sp, __l03_wrong_c\n" +
-        "lw a0, 0({{base}})",
-      probeExtraData:
-        "__l03_correct: .word 42\n" +
-        "__l03_wrong_a: .word 17\n" +
-        "__l03_wrong_b: .word 34\n" +
-        "__l03_wrong_c: .word 51",
+        "la a1, __l03_correct\nla a2, __l03_wrong\nlw a0, 0({{base}})",
+      probeExtraData: "__l03_correct: .word 42\n__l03_wrong: .word 17",
       checkRegister: "a0",
-      blanks: [{ id: "base", answer: "a1", options: ["a0", "a1", "a2", "sp"] }],
+      // a2 shown too (as "→ 別的位址", no value drawn) so the option is
+      // answerable purely from what's on screen rather than asking the
+      // learner to recall an undisplayed register's identity — see the
+      // review's L0-3 step 4 note "use only registers whose current
+      // contents are displayed."
+      registerContext: ["a1", "a2", "a0"],
+      registerBefore: { a2: "→ 別的位址" },
+      memoryVisual: {
+        baseRegister: "a1",
+        baseValue: "→",
+        cells: [{ offset: 0, value: "42" }],
+        highlightOffset: 0,
+      },
+      blanks: [{ id: "base", answer: "a1", options: ["a1", "a2"] }],
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "一個 word 佔 4 個 byte",
+      prompt:
+        "記憶體格子的大小是 byte，但 `lw`／`sw` 一次讀寫 **4 個 byte（一個 word）**。下一格（offset 4）是一塊獨立的 4-byte 區域：",
+      memoryVisual: {
+        baseRegister: "a1",
+        baseValue: "→",
+        cells: [
+          { offset: 0, value: "42" },
+          { offset: 4, value: "17" },
+        ],
+        highlightOffset: 4,
+      },
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "非 0 的 offset",
+      prompt:
+        "`lw a0, 4(a1)` 從 `a1` 往後跳 **4 個 byte** 再讀，讀到的是隔壁那個 word（17），不是 `a1` 本身指到的那格：",
+      registerContext: ["a0"],
+      registerAfter: { a0: "17" },
+      memoryVisual: {
+        baseRegister: "a1",
+        baseValue: "→",
+        cells: [
+          { offset: 0, value: "42" },
+          { offset: 4, value: "17" },
+        ],
+        highlightOffset: 4,
+        direction: "load",
+        targetRegister: "a0",
+      },
+    },
+    {
+      widgetType: "fill-blank",
+      judge: { kind: "emulator", expect: { registers: { a0: 17 } } },
+      title: "選出正確的 offset",
+      prompt:
+        "位址在 `a1`，目標格子是 offset **4** 那格（17），選出正確的 offset：",
+      asmLines: ["lw a0, {{offset}}(a1)"],
+      setupAsmTemplate: "la a1, __l03_off_base\nlw a0, {{offset}}(a1)",
+      probeExtraData: "__l03_off_base: .word 42\n.word 17",
+      checkRegister: "a0",
+      registerContext: ["a1", "a0"],
+      memoryVisual: {
+        baseRegister: "a1",
+        baseValue: "→",
+        cells: [
+          { offset: 0, value: "42" },
+          { offset: 4, value: "17" },
+        ],
+        highlightOffset: 4,
+      },
+      // Only offsets that are actually visible on screen (the memoryVisual
+      // above shows cells at +0 and +4 only) — an untaught +8 distractor
+      // would ask the learner to guess at memory that was never drawn, the
+      // exact "un-answerable from displayed info" pattern the design
+      // principles doc calls out.
+      blanks: [{ id: "offset", answer: "4", options: ["0", "4"] }],
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "sw 反過來：從暫存器寫進記憶體",
+      prompt:
+        "`sw a0, 0(a1)` 跟 `lw` 方向相反：把 `a0` 的值寫進 `a1` 指到的格子。執行前那格是空的，執行後變成 `a0` 的值（9）：",
+      registerContext: ["a0"],
+      registerLabels: { a0: "9" },
+      memoryVisual: {
+        baseRegister: "a1",
+        baseValue: "→",
+        cells: [{ offset: 0, value: "9" }],
+        highlightOffset: 0,
+        direction: "store",
+        targetRegister: "a0",
+      },
+    },
+    {
+      widgetType: "fill-blank",
+      // A store step stays register-judged with the existing engine per the
+      // review's exact implementation note: load the just-stored word back
+      // into a probe register afterward instead of adding a memory-
+      // expectation shape to the judge schema.
+      judge: { kind: "emulator", expect: { registers: { a2: 9 } } },
+      title: "選 lw 還是 sw",
+      prompt:
+        "把 `a0`（已經是 9）寫進 `a1` 指到的格子，從選項中選出正確的指令：",
+      asmLines: ["{{op}} a0, 0(a1)"],
+      setupAsmTemplate:
+        "li a0, 9\nla a1, __l03_store_target\n{{op}} a0, 0(a1)\nlw a2, 0(a1)",
+      probeExtraData: "__l03_store_target: .word 0",
+      checkRegister: "a2",
+      registerContext: ["a0", "a1"],
+      registerBefore: { a0: "9" },
+      memoryVisual: {
+        baseRegister: "a1",
+        baseValue: "→",
+        cells: [{ offset: 0, value: "—" }],
+        highlightOffset: 0,
+        direction: "store",
+        targetRegister: "a0",
+      },
+      blanks: [{ id: "op", answer: "sw", options: ["lw", "sw"] }],
     },
   ],
 };
@@ -151,13 +418,154 @@ export const L0_4: LevelSchema = {
   id: "L0-4",
   title: "分支：比較跟跳轉是同一個指令做完的",
   onPass: { advance: "L1-1" },
+  // 7-step sequence per cogload-review-L0.md's L0-4 proposal: normal
+  // execution moves down -> a label names a destination -> a branch forks
+  // into two next-locations -> a worked beq -> a beq practice -> bne
+  // reuses the same diagram -> a final beq-or-bne practice. `blt`/`bge`
+  // stay deferred (no downstream use yet, per the review). syscall/
+  // "vulnerable binary" framing is deliberately kept out — that's L1/L2
+  // vocabulary, not needed to form the branch model itself.
   steps: [
     {
       widgetType: "observation",
       judge: { kind: "none" },
-      title: "分支：比較跟跳轉是同一個指令做完的",
+      title: "一般執行：往下一行走",
       prompt:
-        "`beq`／`bne`／`blt`／`bge`——RISC-V 沒有 flags register，**比較跟跳轉是同一個指令做完的**。這條技能樹後面用不到 branch（後面都是純線性 syscall 呼叫，或比較邏輯已經編譯進 vulnerable binary），先眼熟就好，不用操作。",
+        "正常情況下，CPU 執行完一行指令，下一步就是往下一行走。三行連續指令，執行順序就是由上到下：",
+      codeTrace: {
+        lines: [
+          { id: "l1", text: "addi a0, x0, 1" },
+          { id: "l2", text: "addi a1, x0, 2" },
+          { id: "l3", text: "addi a2, x0, 3" },
+        ],
+        currentLineId: "l1",
+      },
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "標籤（label）幫一行指令取名字",
+      prompt:
+        "**標籤（label）**是幫某一行指令取的名字，寫成 `名字:`。它本身不是指令，只是讓其他指令可以用名字指向這一行，這裡 `target:` 指向的就是第 3 行：",
+      codeTrace: {
+        lines: [
+          { id: "l1", text: "addi a0, x0, 1" },
+          { id: "l2", text: "addi a1, x0, 2" },
+          { id: "l3", text: "addi a2, x0, 3", label: "target:" },
+        ],
+      },
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "分支：兩個可能的下一步",
+      prompt:
+        "**分支（branch）指令會二選一**：條件成立就跳到標籤那行，不成立就照常往下一行走。兩條路都畫出來，先不管是哪個指令、哪種條件：",
+      codeTrace: {
+        lines: [
+          { id: "br", text: "b?? a0, a1, target" },
+          { id: "fall", text: "addi a2, x0, 0" },
+          { id: "target", text: "addi a2, x0, 9", label: "target:" },
+        ],
+        currentLineId: "br",
+        fallthroughLineId: "fall",
+        takenLineId: "target",
+      },
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "第一個分支指令：beq",
+      prompt:
+        "`beq a0, a1, target` **相等（equal）就跳**。這裡 `a0 = 5`、`a1 = 5`，相等，所以跳到 `target`，中間那行被跳過：",
+      registerContext: ["a0", "a1"],
+      registerLabels: { a0: "5", a1: "5" },
+      codeTrace: {
+        lines: [
+          { id: "br", text: "beq a0, a1, target" },
+          { id: "fall", text: "addi a2, x0, 0" },
+          { id: "target", text: "addi a2, x0, 9", label: "target:" },
+        ],
+        currentLineId: "br",
+        fallthroughLineId: "fall",
+        takenLineId: "target",
+        executedPath: "taken",
+      },
+    },
+    {
+      widgetType: "fill-blank",
+      // Marker register a2 ends at 9 only if beq actually took the jump
+      // (matching the worked example just shown) — a wrong pick either
+      // fails to assemble meaningfully or leaves a2 at the fall-through
+      // value (0), same "distinct real outcome" pattern as L0-1..L0-3.
+      judge: { kind: "emulator", expect: { registers: { a2: 9 } } },
+      title: "換你判斷 beq 會不會跳",
+      prompt: "`a0 = 5`、`a1 = 5`，選出讓程式跳到 `target` 的比較指令：",
+      asmLines: ["{{op}} a0, a1, target"],
+      setupAsmTemplate:
+        "li a0, 5\nli a1, 5\n{{op}} a0, a1, target\naddi a2, x0, 0\njal x0, __l04_done\ntarget:\naddi a2, x0, 9\n__l04_done:",
+      checkRegister: "a2",
+      registerContext: ["a0", "a1"],
+      registerBefore: { a0: "5", a1: "5" },
+      codeTrace: {
+        lines: [
+          { id: "br", text: "{{op}} a0, a1, target" },
+          { id: "fall", text: "addi a2, x0, 0" },
+          { id: "target", text: "addi a2, x0, 9", label: "target:" },
+        ],
+        currentLineId: "br",
+        fallthroughLineId: "fall",
+        takenLineId: "target",
+        executedPath: "taken",
+      },
+      blanks: [{ id: "op", answer: "beq", options: ["beq", "bne"] }],
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "bne：只換了條件",
+      prompt:
+        "`bne a0, a1, target` **不相等（not equal）就跳**，跟 `beq` 只差一個字。這裡 `a0 = 5`、`a1 = 7`，不相等，所以一樣跳到 `target`：",
+      registerContext: ["a0", "a1"],
+      registerLabels: { a0: "5", a1: "7" },
+      codeTrace: {
+        lines: [
+          { id: "br", text: "bne a0, a1, target" },
+          { id: "fall", text: "addi a2, x0, 0" },
+          { id: "target", text: "addi a2, x0, 9", label: "target:" },
+        ],
+        currentLineId: "br",
+        fallthroughLineId: "fall",
+        takenLineId: "target",
+        executedPath: "taken",
+      },
+    },
+    {
+      widgetType: "fill-blank",
+      // a0 != a1 here (5 vs 7): only bne takes the jump to target (a2 = 9);
+      // beq would fall through (a2 stays 0), so this exercises the opposite
+      // condition from the previous practice step with the same diagram.
+      judge: { kind: "emulator", expect: { registers: { a2: 9 } } },
+      title: "選出跳到 target 的指令",
+      prompt: "`a0 = 5`、`a1 = 7`，選出讓程式跳到 `target` 的比較指令：",
+      asmLines: ["{{op}} a0, a1, target"],
+      setupAsmTemplate:
+        "li a0, 5\nli a1, 7\n{{op}} a0, a1, target\naddi a2, x0, 0\njal x0, __l04_done\ntarget:\naddi a2, x0, 9\n__l04_done:",
+      checkRegister: "a2",
+      registerContext: ["a0", "a1"],
+      registerBefore: { a0: "5", a1: "7" },
+      codeTrace: {
+        lines: [
+          { id: "br", text: "{{op}} a0, a1, target" },
+          { id: "fall", text: "addi a2, x0, 0" },
+          { id: "target", text: "addi a2, x0, 9", label: "target:" },
+        ],
+        currentLineId: "br",
+        fallthroughLineId: "fall",
+        takenLineId: "target",
+        executedPath: "taken",
+      },
+      blanks: [{ id: "op", answer: "bne", options: ["beq", "bne"] }],
     },
   ],
 };

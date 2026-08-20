@@ -50,3 +50,7 @@
   border-color: var(--mint-deep);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--mint) 40%, transparent);
 }
+
+.register-box-arrow {
+  color: var(--text-muted);
+}

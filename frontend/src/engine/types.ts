@@ -51,6 +51,64 @@ export type JudgeSpec =
   | { kind: "emulator"; expect: EmulatorExpectation };
 
 // ---------------------------------------------------------------------------
+// Reusable execution-state visuals — the L0 cognitive-load review's #1
+// finding (docs/design/cogload-review-L0.md): every graded L0 practice step
+// already runs real assembled code through the real WASM emulator with real
+// register/memory results, but that state was never shown to the learner.
+// These three shapes cover the three things the review asked to make
+// visible: register before/after (RegisterBank, extended below), addressed
+// memory (MemoryCells), and a code-trace for branch/jump flow (CodeTrace).
+// Declarative + optional on ObservationStep/FillBlankStep, same pattern as
+// LeverSliderStep.stackVisual.
+// ---------------------------------------------------------------------------
+
+// One addressed-memory cell (typically one word) for MemoryCells — see
+// components/MemoryCells.tsx. `offset` is the byte offset from
+// `MemoryVisualSpec.baseRegister`'s address, `value` is the free-form
+// display string (e.g. "42", "—").
+export interface MemoryCellSpec {
+  offset: number;
+  value?: string;
+  label?: string;
+}
+
+// General (non-stack) addressed-memory visual for L0-3's lw/sw content —
+// StackDiagram's buffer/canary/saved-s0/saved-ra layout is not a fit for
+// this (see cogload-review-L0.md L0-3 §4). Renders a base-address register
+// box plus a row of byte/word cells, with the base+offset target cell
+// highlighted and a load/store direction indicator toward `targetRegister`.
+export interface MemoryVisualSpec {
+  baseRegister: string;
+  baseValue?: string;
+  cells: MemoryCellSpec[];
+  bytesPerCell?: number; // default 4 (one word)
+  highlightOffset?: number;
+  direction?: "load" | "store";
+  targetRegister?: string;
+}
+
+// One row in a CodeTrace — see components/CodeTrace.tsx. `label` is an
+// optional destination label prefix (e.g. "target:") rendered before the
+// instruction text.
+export interface CodeTraceLine {
+  id: string;
+  text: string;
+  label?: string;
+}
+
+// Branch/jump code-trace visual for L0-4's flow content (and L0-2's jal/jalr
+// exposition screen) — plain assembly-line rendering with a current-line
+// highlight, a fall-through/taken-path annotation, and (once a practice
+// step's emulator run has resolved) which path actually executed.
+export interface CodeTraceSpec {
+  lines: CodeTraceLine[];
+  currentLineId?: string;
+  fallthroughLineId?: string;
+  takenLineId?: string;
+  executedPath?: "taken" | "fallthrough";
+}
+
+// ---------------------------------------------------------------------------
 // Steps — one screen inside a level's sequence. Every step carries its own
 // title/prompt (a multi-step level's steps each say something different) and
 // judge (gates advancement iff judge.kind !== 'none'). widgetType picks the
@@ -72,6 +130,18 @@ export interface ObservationStep extends StepBase {
   // e.g. { a7: "syscall 編號" } — see components/RegisterBank.tsx.
   registerContext?: string[];
   registerLabels?: Partial<Record<string, string>>;
+  // Paired with registerLabels (read as the "before" values) to render a
+  // before -> after transition per register box (e.g. L0-1's worked
+  // `addi a0, x0, 3` step: a0 "— -> 3") — see the execution-state-visual
+  // note above and components/RegisterBank.tsx's `after` prop. Omitted for
+  // plain static-value observation steps (e.g. L1-1's a0-a7 role recap).
+  registerAfter?: Partial<Record<string, string>>;
+  // Optional general addressed-memory visual (L0-3's lw/sw content) — see
+  // MemoryVisualSpec above.
+  memoryVisual?: MemoryVisualSpec;
+  // Optional branch/jump code-trace visual (L0-4's flow content, L0-2's
+  // jal/jalr exposition) — see CodeTraceSpec above.
+  codeTrace?: CodeTraceSpec;
   // Optional reference StackDiagram shown under the prompt — e.g. the
   // stack-layout explainer steps preceding L2-5a/L2-5c/L3-1/L3-3's
   // lever-slider/drag-order practice steps, so the prose describing
@@ -100,6 +170,22 @@ export interface FillBlankStep extends StepBase {
   // the blanks (e.g. ["a0"..."a7"] for calling-convention levels L1-2/L1-3).
   // Absent for non-register fill-blanks (e.g. L0-1's arithmetic questions).
   registerContext?: string[];
+  // Known initial register state shown before any option is picked (e.g.
+  // L0-2's `mv` step: a1 = 7, set by a hidden setupAsmTemplate line the
+  // learner never otherwise sees) — see cogload-review-L0.md L0-2 §4 "Add
+  // initial register values to FillBlankStep". FillBlankWidget merges this
+  // under the dynamic post-selection/post-run values it already computes.
+  registerBefore?: Partial<Record<string, string>>;
+  // Optional general addressed-memory visual (L0-3's lw/sw practice) — see
+  // MemoryVisualSpec.
+  memoryVisual?: MemoryVisualSpec;
+  // Optional branch/jump code-trace visual (L0-4's beq/bne practice) — see
+  // CodeTraceSpec. `executedPath` is meaningful once the step's emulator run
+  // has resolved; FillBlankWidget fills it in from the schema's declared
+  // correct path once judge.kind 'emulator' passes (the schema already
+  // encodes which path a correct answer takes, so no raw-result inference is
+  // needed here — see FillBlankWidget.tsx).
+  codeTrace?: CodeTraceSpec;
   // Real RISC-V instruction line(s) shown as the primary visual element
   // (monospace), with each blank rendered inline via a "{{blankId}}"
   // placeholder substituted by the picked option once chosen — e.g.

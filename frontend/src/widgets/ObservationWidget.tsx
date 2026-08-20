@@ -6,6 +6,8 @@ import type { WidgetComponent } from "../engine/widgetDefinition";
 import { defineWidget } from "../engine/widgetDefinition";
 import type { ObservationStep } from "../engine/types";
 import { RegisterBank } from "../components/RegisterBank";
+import { MemoryCells } from "../components/MemoryCells";
+import { CodeTrace } from "../components/CodeTrace";
 import { StackDiagram } from "../components/StackDiagram";
 import { RichText } from "./RichText";
 import "./widgets.css";
@@ -22,6 +24,27 @@ export const ObservationWidget: WidgetComponent<ObservationStep> = ({
         <RegisterBank
           registers={schema.registerContext}
           values={schema.registerLabels}
+          after={schema.registerAfter}
+        />
+      )}
+      {schema.memoryVisual && (
+        <MemoryCells
+          baseRegister={schema.memoryVisual.baseRegister}
+          baseValue={schema.memoryVisual.baseValue}
+          cells={schema.memoryVisual.cells}
+          bytesPerCell={schema.memoryVisual.bytesPerCell}
+          highlightOffset={schema.memoryVisual.highlightOffset}
+          direction={schema.memoryVisual.direction}
+          targetRegister={schema.memoryVisual.targetRegister}
+        />
+      )}
+      {schema.codeTrace && (
+        <CodeTrace
+          lines={schema.codeTrace.lines}
+          currentLineId={schema.codeTrace.currentLineId}
+          fallthroughLineId={schema.codeTrace.fallthroughLineId}
+          takenLineId={schema.codeTrace.takenLineId}
+          executedPath={schema.codeTrace.executedPath}
         />
       )}
       {schema.stackVisual && (

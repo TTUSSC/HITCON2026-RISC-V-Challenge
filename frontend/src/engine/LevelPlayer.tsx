@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import type { LevelSchema, LevelStep } from "./types";
+import type { EmulatorResult, LevelSchema, LevelStep } from "./types";
 import type { RunRequest } from "./emulatorAdapter";
 import { run as runEmulator } from "./emulatorAdapter";
 import { judgeStep } from "./judge";
@@ -27,6 +27,7 @@ import { widgetRegistry } from "./widgetRegistry";
 import type { WidgetComponent } from "./widgetDefinition";
 import type { SubmitState } from "./submitState";
 import { SubmitStateContext } from "./submitState";
+import { EmulatorResultContext } from "./emulatorResultContext";
 import { RunStatusTicker } from "../components/RunStatusTicker";
 
 // How long the 'wrong'/'correct' feedback state lingers before resetting
@@ -58,6 +59,12 @@ export function LevelPlayer({
   const grantReward = useSessionStore((s) => s.grantReward);
   const [stepIndex, setStepIndex] = useState(0);
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
+  // Set right after an emulator-judged step's run resolves (see
+  // emulatorResultContext.ts's file header); reset to null below whenever
+  // the visible step changes, same "adjust state during render" pattern as
+  // trackedStepKey/submitState just above.
+  const [lastEmulatorResult, setLastEmulatorResult] =
+    useState<EmulatorResult | null>(null);
   const prefersReducedMotion = useReducedMotion();
   // Tracks the wrong/correct feedback timeout so a fast retry (submitting
   // again while the previous 'wrong' state is still winding down) doesn't
@@ -91,6 +98,7 @@ export function LevelPlayer({
   if (trackedStepKey !== stepKey) {
     setTrackedStepKey(stepKey);
     setSubmitState("idle");
+    setLastEmulatorResult(null);
   }
 
   useEffect(() => {
@@ -149,10 +157,13 @@ export function LevelPlayer({
     // its own payload before calling onPass; see assembler/index.ts and
     // each widget's file header for how. LevelPlayer's job stays just
     // "run it, then judge the result" — widgets never judge themselves.
-    const judgeInput =
+    const emulatorResult =
       step.judge.kind === "emulator"
         ? await runEmulator(rawInput as RunRequest)
-        : rawInput;
+        : null;
+    const judgeInput =
+      step.judge.kind === "emulator" ? emulatorResult : rawInput;
+    setLastEmulatorResult(emulatorResult);
 
     const result = judgeStep(step, judgeInput);
 
@@ -201,29 +212,31 @@ export function LevelPlayer({
 
   return (
     <SubmitStateContext.Provider value={submitState}>
-      <motion.div
-        className="widget-feedback-wrap"
-        data-submit-state={submitState}
-        animate={feedbackAnimate}
-        transition={{ duration: prefersReducedMotion ? 0.15 : 0.4 }}
-      >
-        <Widget schema={step} onPass={handleStepPass} />
-        {submitState === "running" && <RunStatusTicker />}
-        <AnimatePresence>
-          {submitState === "wrong" && (
-            <motion.div
-              className="widget-feedback-message"
-              role="alert"
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: prefersReducedMotion ? 0.1 : 0.2 }}
-            >
-              再試一次
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+      <EmulatorResultContext.Provider value={lastEmulatorResult}>
+        <motion.div
+          className="widget-feedback-wrap"
+          data-submit-state={submitState}
+          animate={feedbackAnimate}
+          transition={{ duration: prefersReducedMotion ? 0.15 : 0.4 }}
+        >
+          <Widget schema={step} onPass={handleStepPass} />
+          {submitState === "running" && <RunStatusTicker />}
+          <AnimatePresence>
+            {submitState === "wrong" && (
+              <motion.div
+                className="widget-feedback-message"
+                role="alert"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: prefersReducedMotion ? 0.1 : 0.2 }}
+              >
+                再試一次
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      </EmulatorResultContext.Provider>
     </SubmitStateContext.Provider>
   );
 }

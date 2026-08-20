@@ -1,0 +1,102 @@
+/* CodeTrace — monospace code block (matches widgets.css's .fill-blank-code
+   language) plus an SVG connector gutter that draws the branch/fall-through
+   relationship as curves between rows, not text badges. */
+
+.code-trace {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.code-trace-code {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+}
+
+.code-trace-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  padding: 8px 12px;
+  color: var(--text-muted);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.code-trace-label {
+  min-width: 3.5em;
+  color: var(--sky-deep);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.code-trace-text {
+  white-space: pre;
+}
+
+.code-trace-line[data-current="true"] {
+  background: var(--rice);
+  color: var(--coffee);
+}
+
+.code-trace-line[data-current="true"] .code-trace-text {
+  font-weight: 700;
+}
+
+.code-trace-line[data-executed="true"] {
+  background: color-mix(in srgb, var(--mint) 22%, var(--bg));
+  color: var(--coffee);
+}
+
+/* The connector gutter — a fixed-width column to the right of the code.
+   Its SVG uses a real-pixel viewBox (width/height set from measured DOM
+   dimensions, see CodeTrace.tsx) rather than a stretched percentage
+   viewBox, so stroke width and the arrowhead marker render undistorted
+   regardless of row count or font-rendered row height. */
+.code-trace-flow {
+  flex-shrink: 0;
+  border-left: 1px dashed var(--border);
+}
+
+.code-trace-flow-path {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 2 7;
+}
+
+.code-trace-flow-path[data-kind="fallthrough"] {
+  stroke: var(--sky-deep);
+  opacity: 0.55;
+}
+
+.code-trace-flow-path[data-kind="taken"] {
+  stroke: var(--coral-deep);
+  opacity: 0.55;
+}
+
+.code-trace-flow-path[data-executed="true"] {
+  stroke-dasharray: none;
+  stroke-width: 3;
+  opacity: 1;
+}
+
+.code-trace-flow-path[data-kind="fallthrough"][data-executed="true"] {
+  stroke: var(--mint-deep);
+}
+
+.code-trace-flow-path[data-kind="taken"][data-executed="true"] {
+  stroke: var(--mint-deep);
+}

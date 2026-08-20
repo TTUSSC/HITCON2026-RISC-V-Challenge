@@ -26,10 +26,13 @@ import type { WidgetComponent } from "../engine/widgetDefinition";
 import { defineWidget } from "../engine/widgetDefinition";
 import type { FillBlankStep } from "../engine/types";
 import { RegisterBank } from "../components/RegisterBank";
+import { MemoryCells } from "../components/MemoryCells";
+import { CodeTrace } from "../components/CodeTrace";
 import { tokenizeAsmLine, substituteAsmTemplate } from "../engine/asmTemplate";
 import { assembleToElf } from "../engine/assembler";
 import { buildRegisterProbeProgram } from "../engine/assembler/registerProbe";
 import { useSubmitState } from "../engine/submitState";
+import { useEmulatorResult } from "../engine/emulatorResultContext";
 import { RichText } from "./RichText";
 import "./widgets.css";
 
@@ -40,6 +43,11 @@ export const FillBlankWidget: WidgetComponent<FillBlankStep> = ({
   const [selected, setSelected] = useState<Record<string, string>>({});
   const submitState = useSubmitState();
   const isRunning = submitState === "running";
+  // The real EmulatorResult from this step's most recent run, once one has
+  // happened (see engine/emulatorResultContext.ts) — lets a resolved step
+  // show the actual post-run register value instead of a guess, per
+  // cogload-review-L0.md's L0-1 §4 finding.
+  const emulatorResult = useEmulatorResult();
 
   const allAnswered = schema.blanks.every((blank) => selected[blank.id]);
 
@@ -58,7 +66,16 @@ export const FillBlankWidget: WidgetComponent<FillBlankStep> = ({
   // whose *options* are also register names (L1-2's blank id is "a7"), in
   // which case the "chosen option names a register" reading is the correct
   // one (see the review's exact bug report on this).
-  const registerValues: Partial<Record<string, string>> = {};
+  //
+  // registerValues seeds from schema.registerBefore (known initial state,
+  // e.g. L0-2's a1 = 7 setup the player never otherwise sees) so a "before"
+  // value is visible even before anything is picked. registerAfter only
+  // gets populated once a real run has happened — RegisterBank renders a
+  // before -> after transition for any register present in both.
+  const registerValues: Partial<Record<string, string>> = {
+    ...(schema.registerBefore ?? {}),
+  };
+  const registerAfter: Partial<Record<string, string>> = {};
   let highlighted: string | undefined;
   if (schema.registerContext) {
     const expectedRegisters =
@@ -69,15 +86,60 @@ export const FillBlankWidget: WidgetComponent<FillBlankStep> = ({
       const chosen = selected[blank.id];
       if (!chosen) continue;
       if (schema.registerContext.includes(chosen)) {
-        const real = expectedRegisters?.[chosen];
-        registerValues[chosen] = real !== undefined ? String(real) : "?";
         highlighted = chosen;
+        const real = emulatorResult?.registers[chosen];
+        if (real !== undefined) {
+          registerValues[chosen] = String(real);
+        } else if (registerValues[chosen] === undefined) {
+          const guess = expectedRegisters?.[chosen];
+          registerValues[chosen] = guess !== undefined ? String(guess) : "?";
+        }
       } else if (schema.registerContext.includes(blank.id)) {
         registerValues[blank.id] = chosen;
         highlighted = blank.id;
       }
     }
+    // Once a real run has happened, overlay every registerContext register's
+    // *actual* reported value (registerProbe.ts always reports checkRegister,
+    // so this is what finally makes e.g. L0-1's a0 box show "— -> 5" for
+    // real instead of never updating at all — see the review's exact bug
+    // report that registerContext alone did not achieve this).
+    if (emulatorResult) {
+      for (const reg of schema.registerContext) {
+        const real = emulatorResult.registers[reg];
+        if (real !== undefined) {
+          registerAfter[reg] = String(real);
+          highlighted = highlighted ?? reg;
+        }
+      }
+    }
   }
+
+  // Gated on submitState === 'correct', not just emulatorResult being
+  // present: schema.codeTrace.executedPath is the path a *correct* pick
+  // takes, declared statically in level content, not inferred from the raw
+  // result — a wrong pick still produces an emulatorResult (so it can fail
+  // the judge), but revealing "executedPath: taken" on a wrong pick would
+  // be showing a fabricated outcome, not the pick's real one. See types.ts's
+  // FillBlankStep.codeTrace doc comment.
+  const codeTraceExecutedPath =
+    submitState === "correct" && schema.codeTrace
+      ? schema.codeTrace.executedPath
+      : undefined;
+  // codeTrace line text may itself use the same "{{blankId}}" placeholder
+  // as asmLines (e.g. L0-4's practice steps swap the opcode) — substitute
+  // the picked option same as the inline asm rendering does, showing "___"
+  // instead of an empty string for an unanswered blank so the placeholder
+  // doesn't just vanish.
+  const codeTraceLines = schema.codeTrace?.lines.map((line) => ({
+    ...line,
+    text: substituteAsmTemplate(
+      line.text,
+      Object.fromEntries(
+        schema.blanks.map((b) => [b.id, selected[b.id] ?? "___"]),
+      ),
+    ),
+  }));
 
   const handleSubmit = () => {
     if (schema.judge.kind === "emulator") {
@@ -115,7 +177,28 @@ export const FillBlankWidget: WidgetComponent<FillBlankStep> = ({
         <RegisterBank
           registers={schema.registerContext}
           values={registerValues}
+          after={registerAfter}
           highlighted={highlighted}
+        />
+      )}
+      {schema.memoryVisual && (
+        <MemoryCells
+          baseRegister={schema.memoryVisual.baseRegister}
+          baseValue={schema.memoryVisual.baseValue}
+          cells={schema.memoryVisual.cells}
+          bytesPerCell={schema.memoryVisual.bytesPerCell}
+          highlightOffset={schema.memoryVisual.highlightOffset}
+          direction={schema.memoryVisual.direction}
+          targetRegister={schema.memoryVisual.targetRegister}
+        />
+      )}
+      {schema.codeTrace && codeTraceLines && (
+        <CodeTrace
+          lines={codeTraceLines}
+          currentLineId={schema.codeTrace.currentLineId}
+          fallthroughLineId={schema.codeTrace.fallthroughLineId}
+          takenLineId={schema.codeTrace.takenLineId}
+          executedPath={codeTraceExecutedPath}
         />
       )}
       {schema.asmLines && (
