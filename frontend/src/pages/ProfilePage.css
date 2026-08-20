@@ -45,6 +45,56 @@
   margin: 0 0 0.6rem;
 }
 
+.profile-name-row,
+.profile-name-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.profile-name-value {
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.profile-name-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--bg-raised);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+.profile-name-input:focus {
+  outline: none;
+  border-color: var(--sky-deep);
+}
+
+.profile-name-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.profile-name-btn:hover {
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+
 .profile-entry-branch {
   font-family: var(--font-body);
   font-size: 1.05rem;

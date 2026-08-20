@@ -5,7 +5,7 @@ import {
   Link,
   useLocation,
 } from "react-router-dom";
-import { CircleUser, Flag, Award, Cpu } from "lucide-react";
+import { Flag, Award, Cpu } from "lucide-react";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { BottomNav } from "./components/BottomNav";
 import { EntryPage } from "./pages/EntryPage";
@@ -87,9 +87,6 @@ function AppShell() {
         <HeaderTitle />
         <HeaderProgress />
         <div className="app-header-actions">
-          <Link to="/profile" className="header-icon-btn" aria-label="個人頁">
-            <CircleUser size={20} />
-          </Link>
           <ThemeToggle />
         </div>
       </header>

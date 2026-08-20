@@ -3,6 +3,7 @@
 // session's entryPoint in sessionStore and navigates straight to that
 // branch's first level id.
 
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PenLine, Wrench, Cpu } from "lucide-react";
 import { useSessionStore } from "../engine/sessionStore";
@@ -44,8 +45,15 @@ const options: EntryOption[] = [
 export function EntryPage() {
   const navigate = useNavigate();
   const setEntryPoint = useSessionStore((s) => s.setEntryPoint);
+  const setDisplayName = useSessionStore((s) => s.setDisplayName);
+  const [nickname, setNickname] = useState("");
 
   const handleSelect = (option: EntryOption) => {
+    // Trimmed at the moment of committing, not on every keystroke, so a
+    // still-typing player never sees their input silently rewritten. Empty
+    // input just leaves displayName "" — ProfilePage falls back to a
+    // generic label rather than forcing a name.
+    setDisplayName(nickname.trim());
     setEntryPoint(option.entryPoint);
     // Land on the map first (Duolingo-style home screen), not straight into
     // the first question — the map is where a session picks where to start.
@@ -56,6 +64,22 @@ export function EntryPage() {
     <div className="entry-page">
       <h1 className="entry-title">你對 RISC-V 有多熟？</h1>
       <p className="entry-subtitle">選一個最符合你現在程度的入口，開始挑戰。</p>
+
+      <div className="entry-profile-setup">
+        <label htmlFor="entry-nickname" className="entry-profile-label">
+          幫自己取個暱稱吧
+        </label>
+        <input
+          id="entry-nickname"
+          type="text"
+          className="entry-profile-input"
+          placeholder="你的暱稱（選填）"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          maxLength={20}
+        />
+      </div>
+
       <div className="entry-options">
         {options.map((option) => {
           const Icon = option.icon;

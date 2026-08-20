@@ -22,6 +22,36 @@
   margin: 0 0 32px;
 }
 
+.entry-profile-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 28px;
+  text-align: left;
+}
+
+.entry-profile-label {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.entry-profile-input {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: var(--bg-raised);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+.entry-profile-input:focus {
+  outline: none;
+  border-color: var(--sky-deep);
+}
+
 .entry-options {
   display: flex;
   flex-direction: column;

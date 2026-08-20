@@ -244,6 +244,12 @@ export interface JudgeResult {
 
 export interface SessionProgress {
   sessionId: string;
+  // Local-only nickname set on EntryPage during the initial 三選一 pick (or
+  // edited later from ProfilePage) — no account, just a display label so the
+  // booth's "個人頁" isn't just anonymous stats. Empty string means "not set
+  // yet"; callers fall back to a generic label rather than treating it as
+  // required.
+  displayName: string;
   entryPoint: "L0" | "L1" | "L2";
   events: Array<{
     levelId: string;

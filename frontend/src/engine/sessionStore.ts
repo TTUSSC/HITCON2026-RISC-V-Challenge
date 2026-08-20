@@ -20,6 +20,7 @@ function generateSessionId(): string {
 
 export interface SessionStore extends SessionProgress {
   setEntryPoint: (entryPoint: SessionProgress["entryPoint"]) => void;
+  setDisplayName: (displayName: string) => void;
   enterLevel: (levelId: string) => void;
   recordPass: (levelId: string) => void;
   grantReward: (kind: RewardKind, levelId: string) => void;
@@ -29,11 +30,13 @@ export const useSessionStore = create<SessionStore>()(
   persist(
     (set) => ({
       sessionId: generateSessionId(),
+      displayName: "",
       entryPoint: "L0",
       events: [],
       rewards: [],
 
       setEntryPoint: (entryPoint) => set({ entryPoint }),
+      setDisplayName: (displayName) => set({ displayName }),
 
       enterLevel: (levelId) =>
         set((state) => {

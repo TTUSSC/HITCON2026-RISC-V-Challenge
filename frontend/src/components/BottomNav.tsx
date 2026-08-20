@@ -24,7 +24,9 @@ interface NavItem {
 
 // BookOpen matches the in-lesson cheat-sheet trigger's icon (see
 // LevelPage.tsx's .lesson-cheatsheet-btn) — same affordance, same icon.
-// CircleUser matches the existing header profile-nav icon (see App.tsx).
+// Profile access lives only here now — the sticky header used to duplicate
+// it with its own CircleUser icon button, which was redundant once this nav
+// exists on every page that has a header.
 const NAV_ITEMS: NavItem[] = [
   { to: "/path", label: "首頁", icon: Home },
   { to: "/reference", label: "速查", icon: BookOpen },

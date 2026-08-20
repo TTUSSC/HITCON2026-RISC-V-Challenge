@@ -4,7 +4,8 @@
 // know: rewards earned so far, passed-level count vs. total, and the
 // current entry branch. No accounts, nothing persisted beyond sessionStore.
 
-import { Award, ArrowLeft } from "lucide-react";
+import { useState } from "react";
+import { Award, ArrowLeft, Pencil, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSessionStore } from "../engine/sessionStore";
 import { levels, BRANCH_TITLES } from "../engine/levels";
@@ -21,8 +22,21 @@ const REWARD_LABELS: Record<RewardKind, string> = {
 
 export function ProfilePage() {
   const entryPoint = useSessionStore((s) => s.entryPoint);
+  const displayName = useSessionStore((s) => s.displayName);
+  const setDisplayName = useSessionStore((s) => s.setDisplayName);
   const events = useSessionStore((s) => s.events);
   const rewards = useSessionStore((s) => s.rewards);
+
+  // Inline-edit, not a modal — same "just a field on the page" weight as the
+  // rest of this local-only profile (no accounts, nothing to confirm with a
+  // server). Starts open if no name was ever set on EntryPage.
+  const [editing, setEditing] = useState(displayName === "");
+  const [draft, setDraft] = useState(displayName);
+
+  const commitName = () => {
+    setDisplayName(draft.trim());
+    setEditing(false);
+  };
 
   const passedCount = events.filter((e) => e.passedAt !== undefined).length;
   const totalCount = levels.length;
@@ -43,6 +57,49 @@ export function ProfilePage() {
       </Link>
 
       <h1 className="profile-title">個人頁</h1>
+
+      <section className="profile-section">
+        <h2 className="profile-section-heading">暱稱</h2>
+        {editing ? (
+          <div className="profile-name-edit-row">
+            <input
+              type="text"
+              className="profile-name-input"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && commitName()}
+              placeholder="輸入暱稱"
+              maxLength={20}
+              autoFocus
+            />
+            <button
+              type="button"
+              className="profile-name-btn"
+              onClick={commitName}
+              aria-label="儲存暱稱"
+            >
+              <Check size={18} />
+            </button>
+          </div>
+        ) : (
+          <div className="profile-name-row">
+            <span className="profile-name-value">
+              {displayName || "還沒取暱稱"}
+            </span>
+            <button
+              type="button"
+              className="profile-name-btn"
+              onClick={() => {
+                setDraft(displayName);
+                setEditing(true);
+              }}
+              aria-label="編輯暱稱"
+            >
+              <Pencil size={16} />
+            </button>
+          </div>
+        )}
+      </section>
 
       <section className="profile-section">
         <h2 className="profile-section-heading">目前入口分支</h2>
