@@ -74,13 +74,19 @@ export const L0_2: LevelSchema = {
   title: "li／mv 其實是假指令",
   onPass: { advance: "L0-3" },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "li／mv／nop／ret 都是假指令",
+      prompt:
+        "CPU 實際上沒有「li」「mv」這兩個指令——組譯器看到 li a0, 5 會偷偷展開成 addi a0, x0, 5（跟 x0 加 5），看到 mv a0, a1 會展開成 addi a0, a1, 0（跟 a1 加 0）。這種「寫起來像指令、實際是別的指令的縮寫」叫假指令（pseudo-instruction），nop（什麼都不做）跟 ret（跳回呼叫者）也是同一種把戲，之後會遇到。",
+    },
     {
       widgetType: "fill-blank",
       judge: { kind: "emulator", expect: { registers: { a0: 7 } } },
-      title: "li／mv 其實是假指令",
+      title: "用 mv 複製暫存器",
       prompt:
-        "li a0, 5 其實被組譯器展開成 addi a0, x0, 5——li／mv／nop／ret 都是假指令。a1 已經被設成 7，用 mv 把 a1 的值複製到 a0：",
+        "a1 已經被設成 7，用 mv 把 a1 的值複製到 a0（等於是 addi a0, a1, 0 的簡寫）：",
       asmLines: ["mv a0, {{src}}"],
       // a1 is pre-loaded with a known value (7) so only the correct base
       // (a1) reproduces it in a0 — the other options land on a1/a2/ra's
@@ -100,13 +106,18 @@ export const L0_3: LevelSchema = {
   title: "暫存器帶不下所有東西，要跟記憶體借",
   onPass: { advance: "L0-4" },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "跟記憶體借一格",
+      prompt:
+        "暫存器只有 32 個，帶不下所有東西，要跟記憶體借。lw（load word）跟 sw（store word）是讀寫記憶體的一對指令，語法是「offset(base)」：lw a0, 0(a1) 意思是「從 a1 這個位址往後 0 個 byte，讀 4 個 byte 進 a0」；反過來 sw a0, 0(a1) 是「把 a0 的值寫到 a1 指到的位址」。offset 可以不是 0，例如 lw a0, 4(a1) 是往後跳 4 個 byte 再讀。",
+    },
     {
       widgetType: "fill-blank",
       judge: { kind: "emulator", expect: { registers: { a0: 42 } } },
-      title: "暫存器帶不下所有東西，要跟記憶體借",
-      prompt:
-        "暫存器只有 32 個，帶不下所有東西，要跟記憶體借。lw a0, 0(a1) 是「offset(base)」語法，位址在 a1，從選項中選出補完讀值到 a0 的指令：",
+      title: "選出正確的 base 暫存器",
+      prompt: "位址在 a1，從選項中選出補完讀值到 a0 的指令：",
       asmLines: ["lw a0, 0({{base}})"],
       // Each candidate base register points at a distinct known word — only
       // a1 points at the word holding 42, so wrong choices load a different
@@ -200,13 +211,24 @@ export const L1_3: LevelSchema = {
   title: "write 要知道寫到哪裡",
   onPass: { advance: "L1-4" },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "fd：寫到哪個檔案",
+      prompt:
+        "write 光有 a7=64（「我要 write 這個服務」）還不夠——系統還要知道「寫到哪裡」。這個「哪裡」用一個小整數代表，叫 file descriptor（fd）：0 是 stdin（標準輸入）、1 是 stdout（標準輸出，螢幕會看到的地方）、2 是 stderr（錯誤訊息）。這個約定放進 write 的 a0 參數裡。",
+      registerContext: ["a0", "a7"],
+      registerLabels: {
+        a0: "fd（0=stdin/1=stdout/2=stderr）",
+        a7: "64（write，已固定）",
+      },
+    },
     {
       widgetType: "fill-blank",
       judge: { kind: "direct" },
       title: "write 要知道寫到哪裡",
       prompt:
-        "write 要知道寫到哪裡：把 a0 設成 1（stdout）。L1-2 ＋ L1-3 合起來等於原本一次到位的目標——過關瞬間已經站在 Level 2 門口。",
+        "把 a0 設成 1（stdout）。L1-2 ＋ L1-3 合起來等於原本一次到位的目標——過關瞬間已經站在 Level 2 門口。",
       asmLines: ["li a0, {{a0}}   # 1 = stdout", "li a7, 64", "ecall"],
       blanks: [{ id: "a0", answer: "1", options: ["0", "1", "2", "64"] }],
       registerContext: ["a0", "a1", "a7"],
@@ -333,7 +355,13 @@ export const L2_2: LevelSchema = {
   title: "排出正確的 ORW 順序",
   onPass: { advance: "L2-3" },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "三個 syscall 接力：fd 會傳給下一個",
+      prompt:
+        "open(a7=1024, a0=path, a1=flags) 執行完，回傳值（新開檔案的 fd）會放在 a0 裡——下一個 read(a7=63, a0=fd, a1=buf, a2=len) 就要用這個 fd，不是隨便寫死一個數字。同樣地，write(a7=64, a0=fd, a1=buf, a2=len) 印出的東西，就是 read 剛剛讀進 buf 的內容。三個 syscall 是接力賽，順序錯了，後面拿到的值就是垃圾。",
+    },
     {
       widgetType: "drag-order",
       // TODO: placeholder pending real test ELF (see levels.md 待驗證/待辦) —
@@ -369,7 +397,13 @@ export const L2_3: LevelSchema = {
   title: "填出正確的 syscall 編號",
   onPass: { advance: "L2-4" },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "四個編號，四個服務",
+      prompt:
+        "rv32emu 是 newlib/riscv-pk 風格的精簡 syscall table，這條技能樹會用到的編號只有四個：open=1024、read=63、write=64、exit=93。骨架已經幫你搭好 li a7, ___ 跟 ecall，這步只考「印出東西該填哪個編號」。",
+    },
     {
       widgetType: "fill-blank",
       judge: { kind: "direct" },
@@ -388,7 +422,13 @@ export const L2_4: LevelSchema = {
   title: "從零刻出完整 ORW",
   onPass: { advance: "L2-5a" },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "從零手刻：沒有骨架了",
+      prompt:
+        '前面幾關 li a7, ___ / ecall 的骨架都被拿掉了，這次要自己寫出完整結構：一個 .data 段放檔名字串（例如 path: .asciz "flag.txt"）、一個 _start 標籤開始執行、依序 open → read → write → exit 四次 li a7, N / ecall。open 拿到的 fd 存在 a0，記得先搬到別的暫存器（例如 mv s1, a0）再繼續用，否則下一個 syscall 會把 a0 蓋掉。',
+    },
     {
       widgetType: "freehand-editor",
       judge: { kind: "emulator", expect: { stdoutContains: "flag" } },
@@ -405,7 +445,13 @@ export const L2_5A: LevelSchema = {
   title: "滑到剛好蓋到 ra 的 offset",
   onPass: { advance: "L2-5b" },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "buffer 後面藏著 saved ra",
+      prompt:
+        "這支 binary 有一個固定大小的 buffer（32 bytes）接收輸入，緊接著往高位址是 saved s0（函式進入時存的舊 frame pointer，4 bytes）、再來是 saved ra（函式怎麼記得要跳回哪，4 bytes）。函式結束時的 ret 其實是 jalr x0, ra, 0 這條假指令——直接跳到 ra 存的位址。輸入沒有邊界檢查，寫超過 32 bytes 就會一路蓋過 saved s0，蓋到 saved ra，讓函式 return 的時候跳到你指定的地方。",
+    },
     {
       widgetType: "lever-slider",
       judge: { kind: "direct" },
@@ -436,7 +482,13 @@ export const L2_5B: LevelSchema = {
   title: "選出 win() 的位址",
   onPass: { advance: "L2-5c" },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "位址是編出來就固定的",
+      prompt:
+        "win() 是這支 binary 裡本來就存在、但正常流程永遠不會被呼叫到的一段程式碼（例如印出 flag 再 exit）。它跟其他函式一樣，編譯完就有一個固定的記憶體位址——蓋掉 saved ra 時，只要把這個位址填進去，函式 ret 的時候就會跳過去執行，而不是跳回原本呼叫它的地方。",
+    },
     {
       widgetType: "fill-blank",
       judge: { kind: "direct" },
@@ -459,7 +511,13 @@ export const L2_5C: LevelSchema = {
   title: "排出正確的 payload",
   onPass: { advance: "L2-Bonus" },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "把三塊拼成一條 payload",
+      prompt:
+        "L2-5a 找到的 offset、L2-5b 選到的 win() 位址，現在要拼成同一條 bytes：先用 padding 把 buffer 填滿到剛好蓋到 saved ra 前一格，中間 saved s0 那 4 bytes 值不重要（函式不會再用到它），最後 4 bytes 換成 win() 的位址——寫超過 saved ra 邊界的部分，會蓋到更遠的記憶體，反而讓程式在跳轉前就崩潰，所以順序跟長度都要抓準。",
+    },
     {
       widgetType: "drag-order",
       judge: { kind: "emulator", expect: { stdoutContains: "flag" } },
@@ -481,7 +539,13 @@ export const L2_BONUS: LevelSchema = {
   title: "拿掉所有輔助，自己組出完整 payload",
   onPass: { advance: "L3-0" },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "自己編位址，小端序寫進 bytes",
+      prompt:
+        "沒有選單了，win() 的位址要自己從反組譯結果或符號表找出來。RISC-V 是 little-endian，一個 32-bit 位址（例如 0x10074）寫進記憶體時，最低位的 byte 放最前面：74 00 01 00，不是照著十六進位字面順序排。組語裡可以用 .word 0x10074 讓組譯器自動排好位元組順序，不用手動反轉。",
+    },
     {
       widgetType: "freehand-editor",
       judge: { kind: "emulator", expect: { stdoutContains: "flag" } },
@@ -517,7 +581,13 @@ export const L3_1: LevelSchema = {
   title: "撞牆：這次先撞到 canary",
   onPass: { advance: "L3-2" },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "編譯器怎麼檢查 canary",
+      prompt:
+        "-fstack-protector-all 編出來的函式，在 ret 之前會偷偷插入一段檢查：把 buffer 旁邊存的 canary 讀出來，跟一個全域正確值比對，兩者不一樣就代表被溢位覆寫過，直接跳去一個永遠不回來的錯誤處理函式，印出 *** stack smashing detected ***。組譯層級大致長這樣：lw t0, -4(s0) 讀出堆疊上的 canary，跟正確值比對後 bne t0, t1, .Lfail，一致才會真的執行 ret；.Lfail 裡呼叫的是 __stack_chk_fail，不是普通函式返回。",
+    },
     {
       widgetType: "lever-slider",
       // No target: judge.kind is 'none', this is pure feel (see types.ts).
@@ -545,7 +615,13 @@ export const L3_2: LevelSchema = {
   title: "猜出完整的 canary",
   onPass: { advance: "L3-3" },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "一次猜一個 byte，不是一次猜整個 canary",
+      prompt:
+        "4-byte canary 如果整個一起猜，要試到 2^32（超過 40 億）種組合。但因為每次重跑都是全新的 emulator instance，而且 canary 檢查是逐個 byte 累加比對的，所以可以只猜第一個 byte：猜錯馬上 crash（stack smashing），猜對則不會 crash，這就洩漏了正確值。確定第一個 byte 後才猜第二個——4 個 byte 分開猜，最多只要試 4 × 256 = 1024 次，而不是 2^32 次。",
+    },
     {
       widgetType: "byte-guesser",
       judge: { kind: "emulator", expect: { exitCode: 0 } },
@@ -563,7 +639,13 @@ export const L3_3: LevelSchema = {
   title: "組出完整 payload：canary 版",
   onPass: { advance: "L3-4" },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "canary 插進 buffer 跟 saved ra 中間",
+      prompt:
+        "跟 L2-5c 排的順序多了一段：buffer 填滿 → 正確 canary（L3-2 猜出來的那 4 個 byte，一個都不能錯）→ 隨便的 saved s0 → 新的 ra。canary 位置錯了、或值不是剛猜出來的那組，函式 ret 前的比對就會失敗，直接觸發 stack smashing，永遠到不了新的 ra。",
+    },
     {
       widgetType: "drag-order",
       judge: { kind: "emulator", expect: { exitCode: 0 } },
@@ -586,13 +668,19 @@ export const L3_4: LevelSchema = {
   title: "串出 ORW gadget chain",
   onPass: { advance: "L3-Bonus" },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "buffer 太小，塞不下 shellcode，改串 gadget",
+      prompt:
+        "這次 buffer 小到連一段能開檔讀檔印字的完整 shellcode 都塞不下，而且也沒有 win() 這種現成的「一鍵通關」函式可以跳。RISC-V 沒有 x86 那種 pop/push 指令，但 binary 裡到處都是「從堆疊搬值進參數暫存器，再 ret 到下一段」的片段，例如 lw a0, 0(sp); addi sp, sp, 4; ret ——這種以 ret 結尾、可以像積木一樣一段接一段串起來的指令片段叫 gadget。把你控制的堆疊資料排成「gadget 位址、gadget 要用的參數、下一個 gadget 位址…」，就能借用 binary 自己的程式碼片段拼出完整 open→read→write 的效果，這就是 ROP（Return-Oriented Programming）。",
+    },
     {
       widgetType: "gadget-chain",
       judge: { kind: "emulator", expect: { stdoutContains: "flag" } },
       title: "串出 ORW gadget chain",
       prompt:
-        "buffer 塞不下完整 shellcode，這次也沒有 win() 可以跳——gadget 是一段以 ret 結尾、可拼接利用的指令片段。用點選串接的方式組出 ORW chain。",
+        "buffer 塞不下完整 shellcode，這次也沒有 win() 可以跳——用點選串接的方式，依序選出能組成 open → read → write 效果的 gadget。",
       gadgets: [
         // TODO: placeholder pending real test ELF (see levels.md 待辦: L3-4
         // 的 gadget 清單內容，需從實際編出來的 vulnerable binary 掃出可用
@@ -624,7 +712,13 @@ export const L3_BONUS: LevelSchema = {
   title: "終盤大魔王：自己反組譯、自己串 ROP",
   onPass: { advance: null },
   steps: [
-    // TODO: expand into a richer multi-step sequence
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "終盤大魔王：沒有清單，自己反組譯",
+      prompt:
+        "L3-4 幫你篩好了候選 gadget 清單；這關拿掉了——要自己把 binary 反組譯，掃過整段程式碼找出以 ret（jalr x0, ra, 0）結尾、對你有用的指令片段，記下每個片段的位址，再手動排出完整的堆疊資料：一串 [gadget 位址, 參數, 下一個 gadget 位址, ...] 交錯排列，用 .word 指示詞把每個 32-bit 值依序寫進 payload，讓劫持後的 ra 一路跳過整條 ORW chain。完賽與否不影響 L3-4 已經拿到的完賽感，這關純粹是給想要「破台」證明的人。",
+    },
     {
       widgetType: "freehand-editor",
       judge: { kind: "emulator", expect: { stdoutContains: "flag" } },
