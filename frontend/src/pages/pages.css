@@ -84,6 +84,27 @@
   padding: 0.5rem 0 2.5rem;
 }
 
+/* One stacked section per branch the player has entered — see MapPage.tsx's
+   file header for why this replaced the old single-branch-only render. */
+.map-branch-section {
+  padding: 0 0 0.5rem;
+}
+
+.map-branch-section + .map-branch-section {
+  margin-top: 0.5rem;
+  border-top: 2px dashed var(--border);
+  padding-top: 1rem;
+}
+
+.map-branch-heading {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0 0 0.25rem;
+}
+
 /* Lesson/question screen ("/level/:levelId") — Duolingo's actual lesson
    layout: a slim top bar (close + progress), full-screen focused question
    content, nothing else visible from the map. */
