@@ -17,6 +17,7 @@ import { Check, Zap, Loader2 } from "lucide-react";
 import type { WidgetComponent } from "../engine/widgetDefinition";
 import { defineWidget } from "../engine/widgetDefinition";
 import type { ByteGuesserStep } from "../engine/types";
+import { RichText } from "./RichText";
 import "./widgets.css";
 
 // TODO: wire emulatorAdapter.run() once WASM assets are in public/ — a real
@@ -88,7 +89,7 @@ export const ByteGuesserWidget: WidgetComponent<ByteGuesserStep> = ({
   return (
     <div className="widget widget-byte-guesser">
       <h2>{schema.title}</h2>
-      <p>{schema.prompt}</p>
+      <RichText text={schema.prompt} />
 
       <div className="byte-guesser-grid">
         {Array.from({ length: schema.byteCount }, (_, position) => (

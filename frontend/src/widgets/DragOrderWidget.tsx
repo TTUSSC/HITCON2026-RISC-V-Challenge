@@ -1,9 +1,19 @@
 // Drag-order widget — thin wrapper over SortableJS via react-sortablejs, per
 // platform-architecture.md's "技術棧" note (mirrors Khan Academy Perseus's
 // `sorter` widget: widget only binds schema data, doesn't hand-roll
-// touch/drag logic). onPass hands the current order of item ids up to
-// LevelPlayer, which runs it through judge()'s 'drag-order' direct
-// comparator. This widget never grades itself.
+// touch/drag logic).
+//
+// Two judge shapes, same as FillBlankWidget/DragFillWidget:
+//  - judge.kind === 'direct' (or 'none'): onPass hands the current order of
+//    item ids straight up to LevelPlayer, which runs it through judge()'s
+//    'drag-order' direct comparator.
+//  - judge.kind === 'emulator': the player's chosen order determines the
+//    concatenation order of each item's real asm (item.asm), assembled
+//    between schema.asmPrefix/asmSuffix into a real ELF (mirrors
+//    DragFillWidget's slot.optionAsm concatenation) plus any schema.files
+//    preloaded into the emulator's FS — onPass hands the resulting
+//    RunRequest up to LevelPlayer, which still owns the actual
+//    emulatorAdapter.run() + judge() call. This widget never judges itself.
 
 import { useState } from "react";
 import { ReactSortable } from "react-sortablejs";
@@ -11,7 +21,9 @@ import { GripVertical, Check, Loader2 } from "lucide-react";
 import type { WidgetComponent } from "../engine/widgetDefinition";
 import { defineWidget } from "../engine/widgetDefinition";
 import type { DragOrderStep } from "../engine/types";
+import { assembleToElf } from "../engine/assembler";
 import { useSubmitState } from "../engine/submitState";
+import { RichText } from "./RichText";
 import "./widgets.css";
 
 interface SortableItem {
@@ -28,10 +40,35 @@ export const DragOrderWidget: WidgetComponent<DragOrderStep> = ({
   );
   const isRunning = useSubmitState() === "running";
 
+  const handleSubmit = () => {
+    if (schema.judge.kind !== "emulator") {
+      onPass(items.map((item) => item.id));
+      return;
+    }
+    const itemsById = Object.fromEntries(
+      schema.items.map((item) => [item.id, item]),
+    );
+    const body = items.map((item) => itemsById[item.id]?.asm ?? "").join("\n");
+    const source = `.text\n${schema.asmPrefix ?? ""}${body}\n${schema.asmSuffix ?? ""}`;
+    try {
+      const elf = assembleToElf(source);
+      const files = (schema.files ?? []).map((f) => ({
+        path: f.path,
+        data: new TextEncoder().encode(f.contents),
+      }));
+      onPass({ elf, files });
+    } catch (err) {
+      console.error(
+        `DragOrderWidget: failed to assemble step "${schema.title}"`,
+        err,
+      );
+    }
+  };
+
   return (
     <div className="widget widget-drag-order">
       <h2>{schema.title}</h2>
-      <p>{schema.prompt}</p>
+      <RichText text={schema.prompt} />
       <ReactSortable
         list={items}
         setList={setItems}
@@ -49,7 +86,7 @@ export const DragOrderWidget: WidgetComponent<DragOrderStep> = ({
         type="button"
         className="widget-primary-btn"
         disabled={isRunning}
-        onClick={() => onPass(items.map((item) => item.id))}
+        onClick={handleSubmit}
       >
         {isRunning ? (
           <Loader2 size={16} className="spin" />

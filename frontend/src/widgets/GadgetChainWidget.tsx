@@ -10,6 +10,7 @@ import type { WidgetComponent } from "../engine/widgetDefinition";
 import { defineWidget } from "../engine/widgetDefinition";
 import type { GadgetChainStep } from "../engine/types";
 import { useSubmitState } from "../engine/submitState";
+import { RichText } from "./RichText";
 import "./widgets.css";
 
 export const GadgetChainWidget: WidgetComponent<GadgetChainStep> = ({
@@ -27,7 +28,7 @@ export const GadgetChainWidget: WidgetComponent<GadgetChainStep> = ({
   return (
     <div className="widget widget-gadget-chain">
       <h2>{schema.title}</h2>
-      <p>{schema.prompt}</p>
+      <RichText text={schema.prompt} />
 
       <div className="gadget-chain-current">
         <h3>目前的 chain</h3>

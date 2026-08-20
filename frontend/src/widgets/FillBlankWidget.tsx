@@ -30,6 +30,7 @@ import { tokenizeAsmLine, substituteAsmTemplate } from "../engine/asmTemplate";
 import { assembleToElf } from "../engine/assembler";
 import { buildRegisterProbeProgram } from "../engine/assembler/registerProbe";
 import { useSubmitState } from "../engine/submitState";
+import { RichText } from "./RichText";
 import "./widgets.css";
 
 export const FillBlankWidget: WidgetComponent<FillBlankStep> = ({
@@ -94,7 +95,7 @@ export const FillBlankWidget: WidgetComponent<FillBlankStep> = ({
   return (
     <div className="widget widget-fill-blank">
       <h2>{schema.title}</h2>
-      <p>{schema.prompt}</p>
+      <RichText text={schema.prompt} />
       {schema.registerContext && (
         <RegisterBank
           registers={schema.registerContext}

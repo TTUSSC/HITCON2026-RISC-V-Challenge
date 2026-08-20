@@ -19,6 +19,7 @@ import { defineWidget } from "../engine/widgetDefinition";
 import type { DragFillStep } from "../engine/types";
 import { assembleToElf } from "../engine/assembler";
 import { useSubmitState } from "../engine/submitState";
+import { RichText } from "./RichText";
 import "./widgets.css";
 
 export const DragFillWidget: WidgetComponent<DragFillStep> = ({
@@ -67,7 +68,7 @@ export const DragFillWidget: WidgetComponent<DragFillStep> = ({
   return (
     <div className="widget widget-drag-fill">
       <h2>{schema.title}</h2>
-      <p>{schema.prompt}</p>
+      <RichText text={schema.prompt} />
 
       <div className="drag-fill-slots">
         {schema.slots.map((slot) => (

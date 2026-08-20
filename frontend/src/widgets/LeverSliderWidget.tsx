@@ -13,6 +13,7 @@ import { defineWidget } from "../engine/widgetDefinition";
 import type { LeverSliderStep } from "../engine/types";
 import { StackDiagram } from "../components/StackDiagram";
 import { useSubmitState } from "../engine/submitState";
+import { RichText } from "./RichText";
 import "./widgets.css";
 
 export const LeverSliderWidget: WidgetComponent<LeverSliderStep> = ({
@@ -26,7 +27,7 @@ export const LeverSliderWidget: WidgetComponent<LeverSliderStep> = ({
   return (
     <div className="widget widget-lever-slider">
       <h2>{schema.title}</h2>
-      <p>{schema.prompt}</p>
+      <RichText text={schema.prompt} />
 
       {schema.stackVisual && (
         <StackDiagram

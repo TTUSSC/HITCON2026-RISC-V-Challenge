@@ -72,6 +72,25 @@ export interface ObservationStep extends StepBase {
   // e.g. { a7: "syscall 編號" } — see components/RegisterBank.tsx.
   registerContext?: string[];
   registerLabels?: Partial<Record<string, string>>;
+  // Optional reference StackDiagram shown under the prompt — e.g. the
+  // stack-layout explainer steps preceding L2-5a/L2-5c/L3-1/L3-3's
+  // lever-slider/drag-order practice steps, so the prose describing
+  // buffer/canary/saved-s0/saved-ra order has an accompanying visual
+  // instead of asking the player to hold the layout in their head until the
+  // next step's interactive diagram. Same shape as LeverSliderStep's
+  // stackVisual (see components/StackDiagram.tsx) plus a fixed `fillLength`
+  // since there's no slider here to drive it live — pick whatever fill
+  // amount best illustrates the point this particular step is making (e.g.
+  // 0 for "here's the layout" vs. a full overwrite for "here's the finished
+  // payload").
+  stackVisual?: {
+    bufferSize: number;
+    mode: "offset" | "canary";
+    canarySize?: number;
+    savedS0Size: number;
+    savedRaSize: number;
+    fillLength: number;
+  };
 }
 
 export interface FillBlankStep extends StepBase {
@@ -125,6 +144,13 @@ export interface DragOrderStep extends StepBase {
   // syscall after. Only meaningful when judge.kind is 'emulator'.
   asmPrefix?: string;
   asmSuffix?: string;
+  // Static files to preload into the emulator's virtual FS before running
+  // the assembled payload (see emulatorAdapter.ts's RunRequest.files) —
+  // needed when the assembled asm does a real open()/read() against a path
+  // that must actually exist, e.g. L2-2's open("flag.txt"). `contents` is
+  // plain text, UTF-8-encoded by the widget at submit time. Only meaningful
+  // when judge.kind is 'emulator'.
+  files?: Array<{ path: string; contents: string }>;
 }
 
 export interface DragFillStep extends StepBase {

@@ -21,6 +21,7 @@ import { defineWidget } from "../engine/widgetDefinition";
 import type { FreehandEditorStep } from "../engine/types";
 import { assemble, buildElf, formatAssembleErrors } from "../engine/assembler";
 import { useSubmitState } from "../engine/submitState";
+import { RichText } from "./RichText";
 import "./widgets.css";
 
 export const FreehandEditorWidget: WidgetComponent<FreehandEditorStep> = ({
@@ -45,7 +46,7 @@ export const FreehandEditorWidget: WidgetComponent<FreehandEditorStep> = ({
   return (
     <div className="widget widget-freehand-editor">
       <h2>{schema.title}</h2>
-      <p>{schema.prompt}</p>
+      <RichText text={schema.prompt} />
 
       {/* Plain textarea by design — no CodeMirror/Monaco yet, see file header. */}
       <textarea
