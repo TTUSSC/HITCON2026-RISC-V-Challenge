@@ -49,15 +49,20 @@ export function PathMap({ levelIds, captions, onSelectLevel }: PathMapProps) {
   // could otherwise land looking at old completed nodes from an earlier
   // branch instead of their actual position. Only the branch that actually
   // contains a "current" node scrolls (earlier branches are fully passed,
-  // so they have none and this is a no-op there); `behavior: 'auto'`
-  // (instant) rather than 'smooth' since this fires on first paint, where a
-  // scroll animation would just read as janky.
+  // so they have none and this is a no-op there). `smooth` per the repo
+  // owner's explicit request; falls back to instant under
+  // prefers-reduced-motion (matchMedia, not framer-motion's
+  // useReducedMotion — this is a plain scrollIntoView call, no motion
+  // component involved).
   const currentNodeId = nodes.find((n) => n.state === "current")?.id;
   const currentNodeRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     currentNodeRef.current?.scrollIntoView({
       block: "center",
-      behavior: "auto",
+      behavior: prefersReducedMotion ? "auto" : "smooth",
     });
     // Only re-run if which node is "current" actually changes (e.g. after
     // passing a level and coming back), not on every unrelated re-render.
