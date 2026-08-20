@@ -244,6 +244,10 @@ export interface JudgeResult {
 
 export interface SessionProgress {
   sessionId: string;
+  // Stable per-browser id, independent of sessionId's daily reset — see
+  // engine/profileId.ts for why. Lets a future backend submission uniquely
+  // identify "this profile" across days without any account system.
+  profileId: string;
   // Local-only nickname set on EntryPage during the initial 三選一 pick (or
   // edited later from ProfilePage) — no account, just a display label so the
   // booth's "個人頁" isn't just anonymous stats. Empty string means "not set

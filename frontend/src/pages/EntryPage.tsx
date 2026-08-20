@@ -1,7 +1,8 @@
 // Entry-select page ("/") — the 三選一入口 from docs/design/levels.md: pick
-// by RISC-V familiarity, not by "skill level" framing. Each card sets the
-// session's entryPoint in sessionStore and navigates straight to that
-// branch's first level id.
+// by RISC-V familiarity, not by "skill level" framing. Picking a card opens a
+// nickname modal (repo owner's explicit ask: fill in the profile step *after*
+// picking difficulty, not before) — confirming there sets both entryPoint and
+// displayName in one commit and navigates to the map.
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -46,15 +47,17 @@ export function EntryPage() {
   const navigate = useNavigate();
   const setEntryPoint = useSessionStore((s) => s.setEntryPoint);
   const setDisplayName = useSessionStore((s) => s.setDisplayName);
+  const [pendingOption, setPendingOption] = useState<EntryOption | null>(null);
   const [nickname, setNickname] = useState("");
 
-  const handleSelect = (option: EntryOption) => {
+  const confirmEntry = () => {
+    if (!pendingOption) return;
     // Trimmed at the moment of committing, not on every keystroke, so a
     // still-typing player never sees their input silently rewritten. Empty
     // input just leaves displayName "" — ProfilePage falls back to a
     // generic label rather than forcing a name.
     setDisplayName(nickname.trim());
-    setEntryPoint(option.entryPoint);
+    setEntryPoint(pendingOption.entryPoint);
     // Land on the map first (Duolingo-style home screen), not straight into
     // the first question — the map is where a session picks where to start.
     navigate("/path");
@@ -64,22 +67,6 @@ export function EntryPage() {
     <div className="entry-page">
       <h1 className="entry-title">你對 RISC-V 有多熟？</h1>
       <p className="entry-subtitle">選一個最符合你現在程度的入口，開始挑戰。</p>
-
-      <div className="entry-profile-setup">
-        <label htmlFor="entry-nickname" className="entry-profile-label">
-          幫自己取個暱稱吧
-        </label>
-        <input
-          id="entry-nickname"
-          type="text"
-          className="entry-profile-input"
-          placeholder="你的暱稱（選填）"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          maxLength={20}
-        />
-      </div>
-
       <div className="entry-options">
         {options.map((option) => {
           const Icon = option.icon;
@@ -88,7 +75,10 @@ export function EntryPage() {
               key={option.entryPoint}
               type="button"
               className="entry-card"
-              onClick={() => handleSelect(option)}
+              onClick={() => {
+                setNickname("");
+                setPendingOption(option);
+              }}
             >
               <Icon size={32} className="entry-card-icon" />
               <span className="entry-card-title">{option.title}</span>
@@ -99,6 +89,54 @@ export function EntryPage() {
           );
         })}
       </div>
+
+      {pendingOption && (
+        <div
+          className="entry-nickname-overlay"
+          onClick={() => setPendingOption(null)}
+        >
+          <div
+            className="entry-nickname-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="entry-nickname-heading"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="entry-nickname-heading" className="entry-nickname-heading">
+              幫自己取個暱稱吧
+            </h2>
+            <p className="entry-nickname-subtext">
+              會顯示在你的個人頁，之後也可以再改。
+            </p>
+            <input
+              type="text"
+              className="entry-nickname-input"
+              placeholder="你的暱稱（選填）"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && confirmEntry()}
+              maxLength={20}
+              autoFocus
+            />
+            <div className="entry-nickname-actions">
+              <button
+                type="button"
+                className="entry-nickname-skip-btn"
+                onClick={confirmEntry}
+              >
+                跳過
+              </button>
+              <button
+                type="button"
+                className="entry-nickname-confirm-btn"
+                onClick={confirmEntry}
+              >
+                開始挑戰
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

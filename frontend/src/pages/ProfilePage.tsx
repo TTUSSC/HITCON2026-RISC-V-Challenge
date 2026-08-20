@@ -22,6 +22,7 @@ const REWARD_LABELS: Record<RewardKind, string> = {
 
 export function ProfilePage() {
   const entryPoint = useSessionStore((s) => s.entryPoint);
+  const profileId = useSessionStore((s) => s.profileId);
   const displayName = useSessionStore((s) => s.displayName);
   const setDisplayName = useSessionStore((s) => s.setDisplayName);
   const events = useSessionStore((s) => s.events);
@@ -150,6 +151,14 @@ export function ProfilePage() {
           </ul>
         )}
       </section>
+
+      {/* Stable per-browser id (engine/profileId.ts) — no backend to submit
+          to yet, but shown so a player can quote it to staff if one ever
+          gets wired up, and so this identity isn't invisible/undiscoverable
+          in the meantime. */}
+      <p className="profile-id-footer" title={profileId}>
+        識別碼 {profileId.slice(0, 8)}
+      </p>
     </div>
   );
 }

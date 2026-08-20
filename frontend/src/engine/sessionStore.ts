@@ -8,6 +8,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { getOrCreateProfileId } from "./profileId";
 import type { RewardKind, SessionProgress } from "./types";
 
 function generateSessionId(): string {
@@ -30,6 +31,7 @@ export const useSessionStore = create<SessionStore>()(
   persist(
     (set) => ({
       sessionId: generateSessionId(),
+      profileId: getOrCreateProfileId(),
       displayName: "",
       entryPoint: "L0",
       events: [],

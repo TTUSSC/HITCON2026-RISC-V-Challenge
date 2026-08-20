@@ -22,34 +22,102 @@
   margin: 0 0 32px;
 }
 
-.entry-profile-setup {
+/* Nickname modal — opens after a difficulty card is picked, before landing
+   on the map (see EntryPage.tsx). Same overlay weight as CheatSheet.css's
+   bottom sheet but centered, since this is a one-off setup step rather than
+   a reference panel the player dismisses and reopens. */
+.entry-nickname-overlay {
+  position: fixed;
+  inset: 0;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 150;
+  box-sizing: border-box;
+}
+
+.entry-nickname-modal {
+  width: 100%;
+  max-width: 22rem;
+  padding: 1.5rem;
+  border-radius: 24px;
+  background: var(--bg-raised);
+  border: 3px solid var(--sky);
+  box-sizing: border-box;
   text-align: left;
 }
 
-.entry-profile-label {
+.entry-nickname-heading {
   font-family: var(--font-display);
-  font-size: 0.9rem;
+  font-size: 1.15rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--sky-deep);
+  margin: 0 0 0.4rem;
 }
 
-.entry-profile-input {
+.entry-nickname-subtext {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 1rem;
+}
+
+.entry-nickname-input {
+  width: 100%;
   padding: 12px 14px;
   border-radius: 14px;
   border: 2px solid var(--border);
-  background: var(--bg-raised);
+  background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
   font-size: 1rem;
+  box-sizing: border-box;
 }
 
-.entry-profile-input:focus {
+.entry-nickname-input:focus {
   outline: none;
   border-color: var(--sky-deep);
+}
+
+.entry-nickname-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
+}
+
+.entry-nickname-skip-btn {
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.entry-nickname-skip-btn:hover {
+  background: var(--bg-sunken);
+}
+
+.entry-nickname-confirm-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: none;
+  border-bottom: 4px solid var(--sky-shadow);
+  background: var(--sky);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.entry-nickname-confirm-btn:active {
+  border-bottom-width: 1px;
+  transform: translateY(3px);
 }
 
 .entry-options {
