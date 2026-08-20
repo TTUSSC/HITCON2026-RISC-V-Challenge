@@ -1,0 +1,52 @@
+/* RegisterBank — token-driven, matches the fill-blank/drag-fill cell
+   language (rounded boxes, --border outlines). */
+
+.register-bank {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.register-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 52px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.register-box-name {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--sky-deep);
+}
+
+.register-box-value {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.register-box[data-filled="true"] {
+  border-color: var(--rice-deep);
+  background: var(--rice);
+}
+
+.register-box[data-filled="true"] .register-box-name,
+.register-box[data-filled="true"] .register-box-value {
+  color: var(--coffee);
+}
+
+.register-box[data-highlighted="true"] {
+  border-color: var(--mint-deep);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mint) 40%, transparent);
+}

@@ -51,6 +51,10 @@ export interface ObservationLevel extends LevelBase {
 export interface FillBlankLevel extends LevelBase {
   type: "fill-blank";
   blanks: Array<{ id: string; answer: string; options: string[] }>;
+  // Opt-in: which registers to show in a RegisterBank visualization above
+  // the blanks (e.g. ["a0"..."a7"] for calling-convention levels L1-2/L1-3).
+  // Absent for non-register fill-blanks (e.g. L0-1's arithmetic questions).
+  registerContext?: string[];
 }
 
 export interface DragOrderLevel extends LevelBase {

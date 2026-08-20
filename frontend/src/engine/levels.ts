@@ -94,6 +94,7 @@ export const L1_2: LevelSchema = {
   prompt:
     "你想跟系統要哪個服務？呼叫 read/write/exit 前，系統呼叫編號要放進哪個暫存器？（挑 write 的 syscall 編號）",
   blanks: [{ id: "a7", answer: "a7", options: ["a0", "a1", "a7", "ra"] }],
+  registerContext: ["a0", "a1", "a7", "ra"],
   judge: { kind: "direct" },
   onPass: { advance: "L1-3", reward: "hitcon-badge" },
 };
@@ -105,6 +106,7 @@ export const L1_3: LevelSchema = {
   prompt:
     "write 要知道寫到哪裡：把 a0 設成 1（stdout）。L1-2 ＋ L1-3 合起來等於原本一次到位的目標——過關瞬間已經站在 Level 2 門口。",
   blanks: [{ id: "a0", answer: "1", options: ["0", "1", "2", "64"] }],
+  registerContext: ["a0", "a1", "a7"],
   judge: { kind: "direct" },
   onPass: { advance: "L1-4" },
 };
