@@ -6,7 +6,7 @@
 // is "current", everything after it is "locked".
 
 import { Fragment, useEffect, useRef, useState } from "react";
-import { Check, Lock } from "lucide-react";
+import { Check, Lock, Award } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useSessionStore } from "../engine/sessionStore";
 import "./PathMap.css";
@@ -21,11 +21,24 @@ export interface PathMapProps {
    * never call this — they're rendered disabled instead.
    */
   onSelectLevel?: (levelId: string) => void;
+  /**
+   * Level ids whose onPass grants a real reward (hitcon-badge/ttussc-merch)
+   * — the only levels that "count" as a real 通關, per the repo owner's
+   * explicit L0-demotion decision (L0 is pure tutorial, never marked here
+   * even once passed). Passed nodes in this set get an extra badge distinct
+   * from the plain checkmark every other passed node gets.
+   */
+  rewardLevelIds?: Set<string>;
 }
 
 type NodeState = "done" | "current" | "locked";
 
-export function PathMap({ levelIds, captions, onSelectLevel }: PathMapProps) {
+export function PathMap({
+  levelIds,
+  captions,
+  onSelectLevel,
+  rewardLevelIds,
+}: PathMapProps) {
   const events = useSessionStore((s) => s.events);
   const passedIds = new Set(
     events.filter((e) => e.passedAt !== undefined).map((e) => e.levelId),
@@ -129,6 +142,11 @@ export function PathMap({ levelIds, captions, onSelectLevel }: PathMapProps) {
                   node.id
                 )}
               </motion.div>
+              {node.state === "done" && rewardLevelIds?.has(node.id) && (
+                <div className="reward-badge" title="通關獎勵關卡">
+                  <Award className="icon" />
+                </div>
+              )}
               <div className="caption">{captions?.[node.id] ?? node.id}</div>
             </button>
           </Fragment>

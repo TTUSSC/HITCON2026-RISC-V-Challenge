@@ -28,6 +28,14 @@ import "./pages.css";
 
 type BranchKey = keyof typeof branchLevelIds;
 
+// Levels whose onPass grants a real reward (hitcon-badge / ttussc-merch) —
+// these are the only levels that "count" as a real 通關 per the repo
+// owner's L0-demotion decision (see levels.ts's file header); PathMap marks
+// these distinctly from an ordinary passed node.
+const rewardLevelIds = new Set(
+  levels.filter((l) => l.onPass.reward).map((l) => l.id),
+);
+
 // Canonical display order + section headings, independent of the order
 // branches happen to appear in `events` (a player could in principle jump
 // around, though the UI doesn't currently expose a way to do that).
@@ -79,6 +87,7 @@ export function MapPage() {
           <h2 className="map-branch-heading">{BRANCH_TITLES[key]}</h2>
           <PathMap
             levelIds={[...branchLevelIds[key]]}
+            rewardLevelIds={rewardLevelIds}
             onSelectLevel={(levelId) => navigate(`/level/${levelId}`)}
           />
         </section>
