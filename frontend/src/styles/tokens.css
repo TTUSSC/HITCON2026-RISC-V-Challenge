@@ -1,0 +1,85 @@
+/* Design tokens — confirmed 2026-08-20 (v2), see
+   docs/design/platform-architecture.md "視覺識別（2026-08-20 定案，v2）".
+
+   Style direction is cute/warm everyday feel, NOT the hacker-terminal /
+   circuit-board look of the rejected v1. Don't rename these tokens or add a
+   competing palette — widget components should only ever reach for the
+   semantic tokens below (--bg, --text, etc.), not the raw color scale,
+   so a future re-skin only touches this file. */
+
+:root {
+  /* Base palette (light mode) */
+  --cream: #fff8ec;
+  --cream-2: #ffefd6;
+  --coffee: #4a3626;
+
+  /* Accent: rice / rice-cooker (primary, active/in-progress state) */
+  --rice: #ffb84d;
+  --rice-deep: #e8952a;
+  --rice-shadow: #c97c14;
+
+  /* Accent: sky / penguin (secondary, structural info) */
+  --sky: #5fb8e8;
+  --sky-deep: #3d97c9;
+  --sky-shadow: #2678a8;
+
+  /* Accent: mint (success / pass) */
+  --mint: #4fbf8b;
+  --mint-deep: #35a373;
+  --mint-shadow: #1f8a5c;
+
+  /* Accent: coral (danger / wrong answer) */
+  --coral: #ff6b6b;
+  --coral-deep: #e64f4f;
+  --coral-shadow: #c73a3a;
+
+  /* Semantic tokens — light mode, derived from the base palette above */
+  --bg: var(--cream);
+  --bg-raised: var(--cream-2);
+  --bg-sunken: #f5e6c8;
+  --text: var(--coffee);
+  --text-muted: #8a6f57;
+  --border: #e6d3b0;
+
+  /* Fonts */
+  --font-display: "Fredoka", "Noto Sans TC", sans-serif;
+  --font-body: "Nunito", "Noto Sans TC", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+/* Dark mode follows system preference only — booth app, short sessions,
+   no manual toggle by design (see commit message). Only the semantic
+   tokens are redefined; the raw accent/base scale stays the same in both
+   modes. Warm dark-coffee palette, not cold black/grey. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #2b2018;
+    --bg-raised: #3a2c20;
+    --bg-sunken: #241a13;
+    --text: #fbead4;
+    --text-muted: #b39a80;
+    --border: #4a3a2a;
+  }
+}
+
+/* Explicit override: a manual toggle can force either theme by setting
+   data-theme on <html>/<body>. Same values as the palette above — this
+   block exists purely so an explicit choice wins over prefers-color-scheme
+   (and over the OS default when no data-theme is set at all). */
+:root[data-theme="light"] {
+  --bg: var(--cream);
+  --bg-raised: var(--cream-2);
+  --bg-sunken: #f5e6c8;
+  --text: var(--coffee);
+  --text-muted: #8a6f57;
+  --border: #e6d3b0;
+}
+
+:root[data-theme="dark"] {
+  --bg: #2b2018;
+  --bg-raised: #3a2c20;
+  --bg-sunken: #241a13;
+  --text: #fbead4;
+  --text-muted: #b39a80;
+  --border: #4a3a2a;
+}

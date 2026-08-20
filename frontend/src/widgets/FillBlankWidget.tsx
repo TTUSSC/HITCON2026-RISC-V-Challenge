@@ -6,6 +6,7 @@
 import { useState } from "react";
 import type { WidgetComponent } from "../engine/widgetRegistry";
 import type { FillBlankLevel } from "../engine/types";
+import "./widgets.css";
 
 export const FillBlankWidget: WidgetComponent<FillBlankLevel> = ({
   schema,
@@ -40,6 +41,7 @@ export const FillBlankWidget: WidgetComponent<FillBlankLevel> = ({
       ))}
       <button
         type="button"
+        className="widget-primary-btn"
         disabled={!allAnswered}
         onClick={() => onPass(selected)}
       >

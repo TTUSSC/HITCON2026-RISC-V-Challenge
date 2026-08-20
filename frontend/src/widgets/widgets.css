@@ -1,0 +1,96 @@
+/* Shared widget presentation layer — token-driven only. This is styling
+   for the two widgets currently wired up (Observation, FillBlank); the
+   other widget stubs are still unstyled placeholders. Don't move judging
+   or interaction logic in here — see platform-architecture.md's
+   "跟工程實作的分工" note: CSS layer changes when the visual identity
+   changes, widget DOM/logic doesn't. */
+
+.widget {
+  max-width: 32rem;
+  margin: 2rem auto;
+  padding: 24px;
+  border-radius: 20px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.widget h2 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  margin: 0 0 8px;
+}
+
+.widget p {
+  font-family: var(--font-body);
+  color: var(--text-muted);
+  margin: 0 0 16px;
+}
+
+/* Chunky 3D-press button: solid bottom "shadow" via a thick border-bottom,
+   which shrinks on :active so the button reads as pressed down into the
+   shadow rather than just darkening. */
+.widget-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 12px;
+  background: var(--mint);
+  color: #fff;
+  border-bottom: 4px solid var(--mint-shadow);
+  cursor: pointer;
+}
+
+.widget-primary-btn:active {
+  border-bottom-width: 1px;
+  transform: translateY(3px);
+}
+
+.widget-primary-btn:disabled {
+  background: var(--bg-sunken);
+  border-bottom-color: var(--border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.fill-blank-row {
+  margin-bottom: 16px;
+}
+
+.fill-blank-id {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--sky-deep);
+  margin-bottom: 6px;
+}
+
+.fill-blank-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fill-blank-options button {
+  font-family: var(--font-body);
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.fill-blank-options button[aria-pressed="true"] {
+  border-color: var(--sky-deep);
+  background: var(--sky);
+  color: #fff;
+}

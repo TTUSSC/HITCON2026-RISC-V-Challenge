@@ -4,6 +4,7 @@
 
 import type { WidgetComponent } from "../engine/widgetRegistry";
 import type { ObservationLevel } from "../engine/types";
+import "./widgets.css";
 
 export const ObservationWidget: WidgetComponent<ObservationLevel> = ({
   schema,
@@ -13,7 +14,11 @@ export const ObservationWidget: WidgetComponent<ObservationLevel> = ({
     <div className="widget widget-observation">
       <h2>{schema.title}</h2>
       <p>{schema.prompt}</p>
-      <button type="button" onClick={() => onPass(undefined)}>
+      <button
+        type="button"
+        className="widget-primary-btn"
+        onClick={() => onPass(undefined)}
+      >
         Next
       </button>
     </div>
