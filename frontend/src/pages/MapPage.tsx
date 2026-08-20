@@ -23,10 +23,11 @@ import {
   branchLevelIds,
   branchKeyForLevel,
   entryFirstLevelId,
+  BRANCH_ORDER,
+  BRANCH_TITLES,
+  type BranchKey,
 } from "../engine/levels";
 import "./pages.css";
-
-type BranchKey = keyof typeof branchLevelIds;
 
 // Levels whose onPass grants a real reward (hitcon-badge / ttussc-merch) —
 // these are the only levels that "count" as a real 通關 per the repo
@@ -35,17 +36,6 @@ type BranchKey = keyof typeof branchLevelIds;
 const rewardLevelIds = new Set(
   levels.filter((l) => l.onPass.reward).map((l) => l.id),
 );
-
-// Canonical display order + section headings, independent of the order
-// branches happen to appear in `events` (a player could in principle jump
-// around, though the UI doesn't currently expose a way to do that).
-const BRANCH_ORDER: BranchKey[] = ["L0", "L1", "L2", "Boss"];
-const BRANCH_TITLES: Record<BranchKey, string> = {
-  L0: "Level 0 · 暖身",
-  L1: "Level 1 · Calling Convention",
-  L2: "Level 2 · Shellcode",
-  Boss: "Boss · Canary & ROP",
-};
 
 export function MapPage() {
   const navigate = useNavigate();

@@ -937,6 +937,20 @@ export function branchKeyForLevel(
   return undefined;
 }
 
+// Canonical branch display order + section headings — shared between
+// MapPage.tsx (branch section headings) and ProfilePage.tsx (current entry
+// branch label), so the two don't drift out of sync with independent copies.
+export type BranchKey = keyof typeof branchLevelIds;
+
+export const BRANCH_ORDER: BranchKey[] = ["L0", "L1", "L2", "Boss"];
+
+export const BRANCH_TITLES: Record<BranchKey, string> = {
+  L0: "Level 0 · 暖身",
+  L1: "Level 1 · Calling Convention",
+  L2: "Level 2 · Shellcode",
+  Boss: "Boss · Canary & ROP",
+};
+
 // First level id for each entry point (mirrors EntryPage.tsx's option list)
 // — used by MapPage to figure out where in the overall `levels` chain a
 // session's progress should be measured from, so an L2 entrant's map never

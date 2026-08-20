@@ -1,0 +1,141 @@
+/* Profile page ("/profile") — same visual language as pages.css/widgets.css
+   (chunky cards, warm palette, Fredoka/Nunito), reusing the reward-badge
+   treatment PathMap.tsx introduced and the lesson-progress-track/fill
+   pattern from pages.css's lesson topbar for the pass-count bar. */
+
+.profile-page {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 1rem 24px 3rem;
+}
+
+.profile-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-decoration: none;
+  margin-bottom: 1rem;
+}
+
+.profile-back-link:hover {
+  color: var(--text);
+}
+
+.profile-title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  margin: 0 0 1.5rem;
+}
+
+.profile-section {
+  margin-bottom: 1.75rem;
+}
+
+.profile-section-heading {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 0 0 0.6rem;
+}
+
+.profile-entry-branch {
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.profile-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.profile-progress-track {
+  flex: 1;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.profile-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--mint);
+  transition: width 0.3s ease;
+}
+
+.profile-progress-label {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.profile-empty-state {
+  font-family: var(--font-body);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.profile-reward-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.profile-reward-item {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.75rem 1rem;
+  border-radius: 16px;
+  background: var(--bg-raised);
+  border-bottom: 4px solid var(--rice-shadow);
+}
+
+.profile-reward-badge {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--rice);
+  color: #fff;
+}
+
+.profile-reward-badge .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.profile-reward-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.profile-reward-name {
+  font-family: var(--font-body);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.profile-reward-source {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
