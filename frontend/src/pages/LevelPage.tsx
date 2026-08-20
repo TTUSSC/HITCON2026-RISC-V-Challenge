@@ -6,11 +6,12 @@
 // a data change, not a code change to this component.
 
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { X } from "lucide-react";
 import { LevelPlayer } from "../engine/LevelPlayer";
 import { levelsById } from "../engine/levels";
 import { useSessionStore } from "../engine/sessionStore";
+import { isLevelReachable } from "../engine/progression";
 import type { LevelSchema } from "../engine/types";
 import { PassMoment } from "../components/PassMoment";
 import { LevelCompleteCard } from "../components/LevelCompleteCard";
@@ -53,6 +54,7 @@ export function LevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
   const navigate = useNavigate();
   const sessionId = useSessionStore((s) => s.sessionId);
+  const events = useSessionStore((s) => s.events);
   const [passInfo, setPassInfo] = useState<PassInfo | null>(null);
   // Set only for passes WITHOUT a reward — shows the lighter
   // LevelCompleteCard beat instead of the full PassMoment celebration (see
@@ -81,6 +83,17 @@ export function LevelPage() {
         </button>
       </div>
     );
+  }
+
+  // Route-level access control: a level is only renderable if it's actually
+  // reachable per the player's real progress (already passed, or the first
+  // not-yet-passed level in its branch — see engine/progression.ts). Without
+  // this, typing /level/L3-Bonus directly worked with zero prior progress,
+  // letting anyone skip the entire chain via URL manipulation. A silent
+  // redirect back to the map is the right UX here — not an error page, the
+  // player just lands where they'd land anyway.
+  if (!levelId || !isLevelReachable(levelId, events)) {
+    return <Navigate to="/path" replace />;
   }
 
   // A level completing (schema.onPass firing, after its LAST step's judge
