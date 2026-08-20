@@ -10,3 +10,17 @@ repos:
     -   id: check-added-large-files
     -   id: check-merge-conflict
     -   id: mixed-line-ending
+-   repo: local
+    hooks:
+    -   id: frontend-eslint
+        name: frontend eslint
+        entry: pnpm --dir frontend run lint
+        language: system
+        files: ^frontend/.*\.(js|jsx|ts|tsx)$
+        pass_filenames: false
+    -   id: frontend-format
+        name: frontend prettier
+        entry: pnpm --dir frontend run format
+        language: system
+        files: ^frontend/.*\.(js|jsx|ts|tsx|css|json)$
+        pass_filenames: false
