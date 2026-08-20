@@ -1,8 +1,9 @@
 // Level page ("/level/:levelId") — looks up the schema and renders
-// LevelPlayer, with a PathMap above it and a PassMoment celebration on
-// reward-granting passes. The lookup goes through a small indirection
-// (getLevelSchema) so swapping the schema source later is a data change,
-// not a code change to this component.
+// LevelPlayer, with a PathMap above it. Passing a level shows a completion
+// beat: the full PassMoment celebration on reward-granting passes, or the
+// lighter LevelCompleteCard on every other pass. The lookup goes through a
+// small indirection (getLevelSchema) so swapping the schema source later is
+// a data change, not a code change to this component.
 
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -12,6 +13,7 @@ import { levelsById } from "../engine/levels";
 import { useSessionStore } from "../engine/sessionStore";
 import type { LevelSchema } from "../engine/types";
 import { PassMoment } from "../components/PassMoment";
+import { LevelCompleteCard } from "../components/LevelCompleteCard";
 import "./pages.css";
 
 // Indirection point: full-content schema source generated from
@@ -52,6 +54,10 @@ export function LevelPage() {
   const navigate = useNavigate();
   const sessionId = useSessionStore((s) => s.sessionId);
   const [passInfo, setPassInfo] = useState<PassInfo | null>(null);
+  // Set only for passes WITHOUT a reward — shows the lighter
+  // LevelCompleteCard beat instead of the full PassMoment celebration (see
+  // handleAdvance below).
+  const [lightComplete, setLightComplete] = useState(false);
   // Position within the CURRENT level's steps (Duolingo lesson granularity)
   // — reported by LevelPlayer on mount/step-change, not derived from the
   // branch's flat level list anymore (see LevelPlayer.tsx's onStepChange).
@@ -89,16 +95,17 @@ export function LevelPage() {
   // a future "peek at what's next" affordance wants it.
   const goToPathMap = () => navigate("/path");
 
-  // Only reward-granting passes get the full celebration beat — inserting a
-  // "繼續" click after every micro-step (most levels are single-concept
-  // fill-blanks/observations) would eat into the 3–5 分鐘 booth budget the
-  // whole level design is built around (see levels.md 前提與限制). Passes
-  // without a reward just return to the path map immediately, same as
-  // before.
+  // Every level pass gets a completion beat, matching real Duolingo (a quick
+  // "lesson complete" screen after literally every lesson, scaling up to a
+  // bigger celebration only for milestone moments). Only reward-granting
+  // passes get the full PassMoment celebration (rice-cooker jump + confetti
+  // + pass code) — a single quick tap-through LevelCompleteCard for the rest
+  // doesn't meaningfully cost more of the 3–5 分鐘 booth budget than the
+  // silent-return version did, it's one extra deliberate tap.
   const handleAdvance = (nextLevelId: string | null) => {
     const reward = schema.onPass.reward;
     if (!reward) {
-      goToPathMap();
+      setLightComplete(true);
       return;
     }
     // Date.now() here runs inside an event handler (LevelPlayer's onAdvance
@@ -116,6 +123,11 @@ export function LevelPage() {
   const handleContinue = () => {
     if (!passInfo) return;
     setPassInfo(null);
+    goToPathMap();
+  };
+
+  const handleLightContinue = () => {
+    setLightComplete(false);
     goToPathMap();
   };
 
@@ -157,6 +169,12 @@ export function LevelPage() {
           message={passInfo.message}
           code={passInfo.code}
           onContinue={handleContinue}
+        />
+      )}
+      {lightComplete && (
+        <LevelCompleteCard
+          title={schema.title}
+          onContinue={handleLightContinue}
         />
       )}
     </div>

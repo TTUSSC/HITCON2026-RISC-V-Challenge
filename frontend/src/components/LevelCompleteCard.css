@@ -1,0 +1,64 @@
+/* Light "lesson complete" card — deliberately smaller/quieter than
+   PassMoment.css's reward-celebration card. Same overlay convention (fixed,
+   centered) but a single stacked column, no icon illustration slot. */
+
+.level-complete-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 100;
+}
+
+.level-complete-card {
+  background: var(--bg-raised);
+  border: 3px solid var(--mint);
+  border-radius: 24px;
+  padding: 1.8rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.3rem;
+  max-width: 22rem;
+  width: 100%;
+}
+
+.level-complete-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--mint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.4rem;
+}
+
+.level-complete-icon .icon {
+  width: 30px;
+  height: 30px;
+  color: #fff;
+}
+
+.level-complete-card h3 {
+  font-family: var(--font-display);
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.level-complete-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.level-complete-card .widget-primary-btn {
+  margin-top: 0.9rem;
+  width: 100%;
+}
