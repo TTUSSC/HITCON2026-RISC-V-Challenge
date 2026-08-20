@@ -16,12 +16,13 @@
 
 import { useState } from "react";
 import { Play } from "lucide-react";
-import type { WidgetComponent } from "../engine/widgetRegistry";
-import type { FreehandEditorLevel } from "../engine/types";
+import type { WidgetComponent } from "../engine/widgetDefinition";
+import { defineWidget } from "../engine/widgetDefinition";
+import type { FreehandEditorStep } from "../engine/types";
 import { assemble, buildElf, formatAssembleErrors } from "../engine/assembler";
 import "./widgets.css";
 
-export const FreehandEditorWidget: WidgetComponent<FreehandEditorLevel> = ({
+export const FreehandEditorWidget: WidgetComponent<FreehandEditorStep> = ({
   schema,
   onPass,
 }) => {
@@ -74,3 +75,11 @@ export const FreehandEditorWidget: WidgetComponent<FreehandEditorLevel> = ({
     </div>
   );
 };
+
+// No directJudge — freehand-editor is always judge.kind 'emulator'
+// (L2-4/L2-Bonus/L3-Bonus).
+// eslint-disable-next-line react-refresh/only-export-components -- self-registration bundle (see widgetDefinition.ts)
+export const freehandEditorWidget = defineWidget<FreehandEditorStep>({
+  type: "freehand-editor",
+  Component: FreehandEditorWidget,
+});

@@ -1,50 +1,58 @@
-// Type-safe map from WidgetType -> React component.
-//
-// Widgets only ever receive { schema, onPass } — they render and collect
-// user input, they never call judge() or emulatorAdapter.run() themselves
-// (see platform-architecture.md design principle #2: widget vs. judge are
-// orthogonal, and the widget catalog's "onPass 把過關結果...往上交給 level
-// engine" note). LevelPlayer is the layer that judges.
+// Thin aggregator: collects each widget's self-registration object (see
+// widgetDefinition.ts) and builds the two lookup tables the rest of the
+// engine needs — WidgetType -> Component (for LevelPlayer to render) and
+// WidgetType -> directJudge (for judge.ts's 'direct' judge.kind branch).
+// This file (plus widgetDefinition.ts) is Phase 2.5's single source of
+// truth: adding/changing a widget touches its own file + one import line
+// here, not three separately-maintained maps.
 
-import type { ComponentType } from "react";
-import type { LevelSchema, WidgetType } from "./types";
+import type { LevelStep, WidgetType } from "./types";
+import type { WidgetComponent, WidgetDefinition } from "./widgetDefinition";
 
-import { ObservationWidget } from "../widgets/ObservationWidget";
-import { FillBlankWidget } from "../widgets/FillBlankWidget";
-import { DragOrderWidget } from "../widgets/DragOrderWidget";
-import { DragFillWidget } from "../widgets/DragFillWidget";
-import { LeverSliderWidget } from "../widgets/LeverSliderWidget";
-import { ByteGuesserWidget } from "../widgets/ByteGuesserWidget";
-import { GadgetChainWidget } from "../widgets/GadgetChainWidget";
-import { FreehandEditorWidget } from "../widgets/FreehandEditorWidget";
+import { observationWidget } from "../widgets/ObservationWidget";
+import { fillBlankWidget } from "../widgets/FillBlankWidget";
+import { dragOrderWidget } from "../widgets/DragOrderWidget";
+import { dragFillWidget } from "../widgets/DragFillWidget";
+import { leverSliderWidget } from "../widgets/LeverSliderWidget";
+import { byteGuesserWidget } from "../widgets/ByteGuesserWidget";
+import { gadgetChainWidget } from "../widgets/GadgetChainWidget";
+import { freehandEditorWidget } from "../widgets/FreehandEditorWidget";
 
-// Narrows LevelSchema down to the specific variant tagged with a given
-// WidgetType, so each widget's `schema` prop is precisely typed (e.g.
-// FillBlankLevel, not the full LevelSchema union).
-export type LevelSchemaOf<T extends WidgetType> = Extract<
-  LevelSchema,
-  { type: T }
->;
+export type { WidgetComponent } from "./widgetDefinition";
 
-// `result` is whatever raw input the corresponding judge.kind comparator
-// needs — for judge.kind === 'emulator' widgets that's the raw payload to
-// run, not an already-judged pass/fail (see task spec: widgets don't judge).
-export type WidgetComponent<T extends LevelSchema> = ComponentType<{
-  schema: T;
-  onPass: (result: unknown) => void;
-}>;
+// Each entry is a WidgetDefinition<T> for a *different* T (one per widget
+// type) — there is no single T that describes the whole list, so the array
+// element type is deliberately widened to `never`'s dual, `unknown`'s
+// discriminated-union sibling: LevelStep as a whole. This is the one
+// unavoidable widening, mirrored by the equally-unavoidable cast below it
+// (same spirit as LevelPlayer.tsx's documented widget-lookup cast).
+const definitions: Array<WidgetDefinition<LevelStep>> = [
+  observationWidget,
+  fillBlankWidget,
+  dragOrderWidget,
+  dragFillWidget,
+  leverSliderWidget,
+  byteGuesserWidget,
+  gadgetChainWidget,
+  freehandEditorWidget,
+] as unknown as Array<WidgetDefinition<LevelStep>>;
 
-type WidgetRegistry = {
-  [T in WidgetType]: WidgetComponent<LevelSchemaOf<T>>;
+type WidgetRegistryMap = {
+  [T in WidgetType]: WidgetComponent<Extract<LevelStep, { widgetType: T }>>;
 };
 
-export const widgetRegistry: WidgetRegistry = {
-  observation: ObservationWidget,
-  "fill-blank": FillBlankWidget,
-  "drag-order": DragOrderWidget,
-  "drag-fill": DragFillWidget,
-  "lever-slider": LeverSliderWidget,
-  "byte-guesser": ByteGuesserWidget,
-  "gadget-chain": GadgetChainWidget,
-  "freehand-editor": FreehandEditorWidget,
-};
+export const widgetRegistry = Object.fromEntries(
+  definitions.map((d) => [d.type, d.Component]),
+) as unknown as WidgetRegistryMap;
+
+export type DirectJudge = (step: LevelStep, input: unknown) => boolean;
+
+// Only the four widget types that support judge.kind 'direct' show up here
+// (fill-blank, lever-slider, gadget-chain, drag-order) — see each widget
+// file's defineWidget() call for which ones opt in.
+export const directJudges: Partial<Record<WidgetType, DirectJudge>> =
+  Object.fromEntries(
+    definitions
+      .filter((d) => d.directJudge)
+      .map((d) => [d.type, d.directJudge as DirectJudge]),
+  );

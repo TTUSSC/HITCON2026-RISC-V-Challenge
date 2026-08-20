@@ -90,7 +90,7 @@
   margin-bottom: 16px;
 }
 
-/* Real asm line(s) shown as the primary visual element (see FillBlankLevel
+/* Real asm line(s) shown as the primary visual element (see FillBlankStep
    .asmLines) — a monospace code block with the blank(s) rendered inline,
    instead of an abstract prose question floating over unrelated pills. */
 .fill-blank-code {

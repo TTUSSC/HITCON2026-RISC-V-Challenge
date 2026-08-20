@@ -8,12 +8,13 @@
 
 import { useState } from "react";
 import { ArrowRight, Check } from "lucide-react";
-import type { WidgetComponent } from "../engine/widgetRegistry";
-import type { LeverSliderLevel } from "../engine/types";
+import type { WidgetComponent } from "../engine/widgetDefinition";
+import { defineWidget } from "../engine/widgetDefinition";
+import type { LeverSliderStep } from "../engine/types";
 import { StackDiagram } from "../components/StackDiagram";
 import "./widgets.css";
 
-export const LeverSliderWidget: WidgetComponent<LeverSliderLevel> = ({
+export const LeverSliderWidget: WidgetComponent<LeverSliderStep> = ({
   schema,
   onPass,
 }) => {
@@ -72,3 +73,15 @@ export const LeverSliderWidget: WidgetComponent<LeverSliderLevel> = ({
     </div>
   );
 };
+
+// Direct-judge comparator, preserved byte-for-byte from the old
+// judge.ts::directComparators['lever-slider'].
+// eslint-disable-next-line react-refresh/only-export-components -- self-registration bundle (see widgetDefinition.ts)
+export const leverSliderWidget = defineWidget<LeverSliderStep>({
+  type: "lever-slider",
+  Component: LeverSliderWidget,
+  directJudge: (schema, input) => {
+    if (schema.target === undefined) return false; // e.g. L3-1 has no target
+    return input === schema.target;
+  },
+});

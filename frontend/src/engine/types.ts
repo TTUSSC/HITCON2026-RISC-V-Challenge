@@ -4,6 +4,15 @@
 // orthogonal — see platform-architecture.md's "Widget Catalog" section for
 // why (L2-1 used to conflate the two and drifted out of sync with the
 // content design).
+//
+// Phase 3 shape: a level ("Ln-m", still the path-map node id) is a short
+// *sequence* of steps — the Duolingo "lesson" granularity the repo owner
+// asked for (docs/design/levels.md's 前提與限制 + explicit complaint: one
+// level used to be one full-screen widget with the whole branch's progress
+// bar spanning it). Only the LAST step's pass fires onPass (session-store
+// recordPass/grantReward/advance) — see engine/LevelPlayer.tsx. A step whose
+// judge.kind is 'none' (observation, or a feel-only widget like L3-1's
+// lever-slider) just advances to the next step with no correctness check.
 
 export type WidgetType =
   | "observation"
@@ -41,21 +50,32 @@ export type JudgeSpec =
   | { kind: "direct" }
   | { kind: "emulator"; expect: EmulatorExpectation };
 
-interface LevelBase {
-  id: string;
+// ---------------------------------------------------------------------------
+// Steps — one screen inside a level's sequence. Every step carries its own
+// title/prompt (a multi-step level's steps each say something different) and
+// judge (gates advancement iff judge.kind !== 'none'). widgetType picks the
+// widget component the same way the old per-level `type` field used to.
+// ---------------------------------------------------------------------------
+
+interface StepBase {
   title: string;
   prompt: string;
   judge: JudgeSpec;
-  onPass: { advance: string | null; reward?: RewardKind };
 }
 
-export interface ObservationLevel extends LevelBase {
-  type: "observation";
+export interface ObservationStep extends StepBase {
+  widgetType: "observation";
   judge: { kind: "none" };
+  // Optional reference RegisterBank shown under the prompt — e.g. L1-2's
+  // observation step recapping what a7/a0-a2 mean before the fill-blank
+  // practice step. `values` are free-form labels (not real register state),
+  // e.g. { a7: "syscall 編號" } — see components/RegisterBank.tsx.
+  registerContext?: string[];
+  registerLabels?: Partial<Record<string, string>>;
 }
 
-export interface FillBlankLevel extends LevelBase {
-  type: "fill-blank";
+export interface FillBlankStep extends StepBase {
+  widgetType: "fill-blank";
   blanks: Array<{ id: string; answer: string; options: string[] }>;
   // Opt-in: which registers to show in a RegisterBank visualization above
   // the blanks (e.g. ["a0"..."a7"] for calling-convention levels L1-2/L1-3).
@@ -88,15 +108,15 @@ export interface FillBlankLevel extends LevelBase {
   probeExtraData?: string;
 }
 
-export interface DragOrderLevel extends LevelBase {
-  type: "drag-order";
+export interface DragOrderStep extends StepBase {
+  widgetType: "drag-order";
   items: Array<{
     id: string;
     label: string;
     // Real assembly text this item contributes when judge.kind is
     // 'emulator' — concatenated in the player's chosen order and assembled
-    // (see LevelPlayer.tsx). Optional because not every drag-order level is
-    // emulator-judged (some direct-judge levels only care about order).
+    // (see LevelPlayer.tsx). Optional because not every drag-order step is
+    // emulator-judged (some direct-judge steps only care about order).
     asm?: string;
   }>;
   correctOrder: string[];
@@ -107,8 +127,8 @@ export interface DragOrderLevel extends LevelBase {
   asmSuffix?: string;
 }
 
-export interface DragFillLevel extends LevelBase {
-  type: "drag-fill";
+export interface DragFillStep extends StepBase {
+  widgetType: "drag-fill";
   slots: Array<{
     id: string;
     label: string;
@@ -126,8 +146,8 @@ export interface DragFillLevel extends LevelBase {
   asmSuffix?: string;
 }
 
-export interface LeverSliderLevel extends LevelBase {
-  type: "lever-slider";
+export interface LeverSliderStep extends StepBase {
+  widgetType: "lever-slider";
   min: number;
   max: number;
   target?: number; // absent when judge.kind === 'none' (pure feel, e.g. L3-1)
@@ -143,34 +163,46 @@ export interface LeverSliderLevel extends LevelBase {
   };
 }
 
-export interface ByteGuesserLevel extends LevelBase {
-  type: "byte-guesser";
+export interface ByteGuesserStep extends StepBase {
+  widgetType: "byte-guesser";
   byteCount: number;
 }
 
-export interface GadgetChainLevel extends LevelBase {
-  type: "gadget-chain";
+export interface GadgetChainStep extends StepBase {
+  widgetType: "gadget-chain";
   gadgets: Array<{ id: string; address: string; description: string }>;
   correctChain: string[];
 }
 
-export interface FreehandEditorLevel extends LevelBase {
-  type: "freehand-editor";
+export interface FreehandEditorStep extends StepBase {
+  widgetType: "freehand-editor";
   starterCode?: string;
 }
 
-export type LevelSchema =
-  | ObservationLevel
-  | FillBlankLevel
-  | DragOrderLevel
-  | DragFillLevel
-  | LeverSliderLevel
-  | ByteGuesserLevel
-  | GadgetChainLevel
-  | FreehandEditorLevel;
+export type LevelStep =
+  | ObservationStep
+  | FillBlankStep
+  | DragOrderStep
+  | DragFillStep
+  | LeverSliderStep
+  | ByteGuesserStep
+  | GadgetChainStep
+  | FreehandEditorStep;
 
-// What a widget hands back to judge() — shape depends on the widget, judge()
-// narrows on schema.type to know what to expect.
+// ---------------------------------------------------------------------------
+// Level — a path-map node ("Ln-m"). onPass fires once, after the LAST step's
+// judge passes (see LevelPlayer.tsx) — not per-step.
+// ---------------------------------------------------------------------------
+
+export interface LevelSchema {
+  id: string;
+  title: string;
+  onPass: { advance: string | null; reward?: RewardKind };
+  steps: LevelStep[];
+}
+
+// What a widget hands back to judgeStep() — shape depends on the widget,
+// judgeStep() narrows on step.widgetType to know what to expect.
 export type WidgetInput = unknown;
 
 export interface JudgeResult {

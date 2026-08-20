@@ -6,11 +6,12 @@
 
 import { useState } from "react";
 import { X, Check } from "lucide-react";
-import type { WidgetComponent } from "../engine/widgetRegistry";
-import type { GadgetChainLevel } from "../engine/types";
+import type { WidgetComponent } from "../engine/widgetDefinition";
+import { defineWidget } from "../engine/widgetDefinition";
+import type { GadgetChainStep } from "../engine/types";
 import "./widgets.css";
 
-export const GadgetChainWidget: WidgetComponent<GadgetChainLevel> = ({
+export const GadgetChainWidget: WidgetComponent<GadgetChainStep> = ({
   schema,
   onPass,
 }) => {
@@ -81,3 +82,19 @@ export const GadgetChainWidget: WidgetComponent<GadgetChainLevel> = ({
     </div>
   );
 };
+
+// Direct-judge comparator, preserved byte-for-byte from the old
+// judge.ts::directComparators['gadget-chain'].
+// eslint-disable-next-line react-refresh/only-export-components -- self-registration bundle (see widgetDefinition.ts)
+export const gadgetChainWidget = defineWidget<GadgetChainStep>({
+  type: "gadget-chain",
+  Component: GadgetChainWidget,
+  directJudge: (schema, input) => {
+    const chain = input as string[] | undefined;
+    if (!chain) return false;
+    return (
+      chain.length === schema.correctChain.length &&
+      chain.every((id, i) => id === schema.correctChain[i])
+    );
+  },
+});

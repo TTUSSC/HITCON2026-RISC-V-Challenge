@@ -14,8 +14,9 @@
 
 import { useState } from "react";
 import { Check, Zap, Loader2 } from "lucide-react";
-import type { WidgetComponent } from "../engine/widgetRegistry";
-import type { ByteGuesserLevel } from "../engine/types";
+import type { WidgetComponent } from "../engine/widgetDefinition";
+import { defineWidget } from "../engine/widgetDefinition";
+import type { ByteGuesserStep } from "../engine/types";
 import "./widgets.css";
 
 // TODO: wire emulatorAdapter.run() once WASM assets are in public/ — a real
@@ -35,7 +36,7 @@ interface GuessRecord {
   correct: boolean;
 }
 
-export const ByteGuesserWidget: WidgetComponent<ByteGuesserLevel> = ({
+export const ByteGuesserWidget: WidgetComponent<ByteGuesserStep> = ({
   schema,
   onPass,
 }) => {
@@ -173,3 +174,10 @@ export const ByteGuesserWidget: WidgetComponent<ByteGuesserLevel> = ({
     </div>
   );
 };
+
+// No directJudge — byte-guesser is always judge.kind 'emulator' (L3-2).
+// eslint-disable-next-line react-refresh/only-export-components -- self-registration bundle (see widgetDefinition.ts)
+export const byteGuesserWidget = defineWidget<ByteGuesserStep>({
+  type: "byte-guesser",
+  Component: ByteGuesserWidget,
+});

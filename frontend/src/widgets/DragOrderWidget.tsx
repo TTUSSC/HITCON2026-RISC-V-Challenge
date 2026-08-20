@@ -8,8 +8,9 @@
 import { useState } from "react";
 import { ReactSortable } from "react-sortablejs";
 import { GripVertical, Check } from "lucide-react";
-import type { WidgetComponent } from "../engine/widgetRegistry";
-import type { DragOrderLevel } from "../engine/types";
+import type { WidgetComponent } from "../engine/widgetDefinition";
+import { defineWidget } from "../engine/widgetDefinition";
+import type { DragOrderStep } from "../engine/types";
 import "./widgets.css";
 
 interface SortableItem {
@@ -17,7 +18,7 @@ interface SortableItem {
   label: string;
 }
 
-export const DragOrderWidget: WidgetComponent<DragOrderLevel> = ({
+export const DragOrderWidget: WidgetComponent<DragOrderStep> = ({
   schema,
   onPass,
 }) => {
@@ -53,3 +54,19 @@ export const DragOrderWidget: WidgetComponent<DragOrderLevel> = ({
     </div>
   );
 };
+
+// Direct-judge comparator, preserved byte-for-byte from the old
+// judge.ts::directComparators['drag-order'].
+// eslint-disable-next-line react-refresh/only-export-components -- self-registration bundle (see widgetDefinition.ts)
+export const dragOrderWidget = defineWidget<DragOrderStep>({
+  type: "drag-order",
+  Component: DragOrderWidget,
+  directJudge: (schema, input) => {
+    const order = input as string[] | undefined;
+    if (!order) return false;
+    return (
+      order.length === schema.correctOrder.length &&
+      order.every((id, i) => id === schema.correctOrder[i])
+    );
+  },
+});

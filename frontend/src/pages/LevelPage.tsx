@@ -8,11 +8,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { X } from "lucide-react";
 import { LevelPlayer } from "../engine/LevelPlayer";
-import {
-  levelsById,
-  branchLevelIds,
-  branchKeyForLevel,
-} from "../engine/levels";
+import { levelsById } from "../engine/levels";
 import { useSessionStore } from "../engine/sessionStore";
 import type { LevelSchema } from "../engine/types";
 import { PassMoment } from "../components/PassMoment";
@@ -56,6 +52,10 @@ export function LevelPage() {
   const navigate = useNavigate();
   const sessionId = useSessionStore((s) => s.sessionId);
   const [passInfo, setPassInfo] = useState<PassInfo | null>(null);
+  // Position within the CURRENT level's steps (Duolingo lesson granularity)
+  // — reported by LevelPlayer on mount/step-change, not derived from the
+  // branch's flat level list anymore (see LevelPlayer.tsx's onStepChange).
+  const [stepProgress, setStepProgress] = useState({ index: 0, total: 1 });
 
   const schema = levelId ? getLevelSchema(levelId) : undefined;
 
@@ -101,7 +101,7 @@ export function LevelPage() {
     // Date.now() here runs inside an event handler (LevelPlayer's onAdvance
     // callback), not during render — safe despite the impurity, but the
     // react-hooks/purity rule can't distinguish that statically.
-    // eslint-disable-next-line react-hooks/purity
+
     const timestamp = Date.now();
     setPassInfo({
       nextLevelId,
@@ -117,18 +117,13 @@ export function LevelPage() {
     goTo(nextLevelId);
   };
 
-  // Slim progress bar in the top bar reflects position within the branch
-  // segment (Duolingo convention) — not per-widget progress, which most
-  // levels here don't have (single-question levels).
-  const branchKey = branchKeyForLevel(schema.id);
-  const pathLevelIds: string[] = branchKey
-    ? [...branchLevelIds[branchKey]]
-    : [];
-  const indexInSegment = pathLevelIds.indexOf(schema.id);
+  // Slim progress bar in the top bar reflects position within the CURRENT
+  // level's step sequence (Duolingo convention: the bar tracks a single
+  // lesson's internal screens, not the whole branch/skill-tree) — see
+  // LevelPlayer.tsx's onStepChange and types.ts's file header for why this
+  // changed from the old "position across the branch" computation.
   const progressPercent =
-    pathLevelIds.length > 0 && indexInSegment >= 0
-      ? ((indexInSegment + 1) / pathLevelIds.length) * 100
-      : 100;
+    ((stepProgress.index + 1) / Math.max(stepProgress.total, 1)) * 100;
 
   return (
     <div className="lesson-page">
@@ -149,7 +144,11 @@ export function LevelPage() {
         </div>
       </div>
       <div className="lesson-body">
-        <LevelPlayer schema={schema} onAdvance={handleAdvance} />
+        <LevelPlayer
+          schema={schema}
+          onAdvance={handleAdvance}
+          onStepChange={(index, total) => setStepProgress({ index, total })}
+        />
       </div>
       {passInfo && (
         <PassMoment

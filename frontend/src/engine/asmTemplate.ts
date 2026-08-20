@@ -1,4 +1,4 @@
-// Tiny "{{blankId}}" placeholder templating shared by FillBlankLevel's
+// Tiny "{{blankId}}" placeholder templating shared by FillBlankStep's
 // asmLines (displayed as real asm with an inline fill-in slot) and
 // setupAsmTemplate (the same substitution, but the result gets assembled and
 // run). Deliberately dumb — no escaping, no nested braces — this only needs

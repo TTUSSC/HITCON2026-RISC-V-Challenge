@@ -21,15 +21,16 @@
 // errors are a real UX requirement.
 
 import { useState } from "react";
-import type { WidgetComponent } from "../engine/widgetRegistry";
-import type { FillBlankLevel } from "../engine/types";
+import type { WidgetComponent } from "../engine/widgetDefinition";
+import { defineWidget } from "../engine/widgetDefinition";
+import type { FillBlankStep } from "../engine/types";
 import { RegisterBank } from "../components/RegisterBank";
 import { tokenizeAsmLine, substituteAsmTemplate } from "../engine/asmTemplate";
 import { assembleToElf } from "../engine/assembler";
 import { buildRegisterProbeProgram } from "../engine/assembler/registerProbe";
 import "./widgets.css";
 
-export const FillBlankWidget: WidgetComponent<FillBlankLevel> = ({
+export const FillBlankWidget: WidgetComponent<FillBlankStep> = ({
   schema,
   onPass,
 }) => {
@@ -76,7 +77,10 @@ export const FillBlankWidget: WidgetComponent<FillBlankLevel> = ({
       } catch (err) {
         // Curated level content failed to assemble — a content bug, not a
         // user input error. Log it; there's nothing the player can fix.
-        console.error(`FillBlankWidget: failed to assemble ${schema.id}`, err);
+        console.error(
+          `FillBlankWidget: failed to assemble step "${schema.title}"`,
+          err,
+        );
       }
       return;
     }
@@ -144,3 +148,16 @@ export const FillBlankWidget: WidgetComponent<FillBlankLevel> = ({
     </div>
   );
 };
+
+// Direct-judge comparator, preserved byte-for-byte from the old
+// judge.ts::directComparators['fill-blank'].
+// eslint-disable-next-line react-refresh/only-export-components -- self-registration bundle (see widgetDefinition.ts)
+export const fillBlankWidget = defineWidget<FillBlankStep>({
+  type: "fill-blank",
+  Component: FillBlankWidget,
+  directJudge: (schema, input) => {
+    const answers = input as Record<string, string> | undefined;
+    if (!answers) return false;
+    return schema.blanks.every((blank) => answers[blank.id] === blank.answer);
+  },
+});

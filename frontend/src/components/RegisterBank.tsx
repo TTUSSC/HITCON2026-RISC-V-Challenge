@@ -1,6 +1,6 @@
 // Row of labeled register boxes (a0–a7, plus ra/sp where relevant) for
 // L1's calling-convention fill-blank levels (L1-2/L1-3). Opt-in per level
-// via FillBlankLevel.registerContext (see types.ts) — absent for
+// via FillBlankStep.registerContext (see types.ts) — absent for
 // non-register fill-blanks like L0-1's arithmetic questions.
 //
 // `values` maps a register name to its currently-known value (e.g. once

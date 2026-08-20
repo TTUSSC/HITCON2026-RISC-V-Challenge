@@ -14,12 +14,13 @@
 
 import { useState } from "react";
 import { Check } from "lucide-react";
-import type { WidgetComponent } from "../engine/widgetRegistry";
-import type { DragFillLevel } from "../engine/types";
+import type { WidgetComponent } from "../engine/widgetDefinition";
+import { defineWidget } from "../engine/widgetDefinition";
+import type { DragFillStep } from "../engine/types";
 import { assembleToElf } from "../engine/assembler";
 import "./widgets.css";
 
-export const DragFillWidget: WidgetComponent<DragFillLevel> = ({
+export const DragFillWidget: WidgetComponent<DragFillStep> = ({
   schema,
   onPass,
 }) => {
@@ -54,7 +55,10 @@ export const DragFillWidget: WidgetComponent<DragFillLevel> = ({
       const elf = assembleToElf(source);
       onPass({ elf });
     } catch (err) {
-      console.error(`DragFillWidget: failed to assemble ${schema.id}`, err);
+      console.error(
+        `DragFillWidget: failed to assemble step "${schema.title}"`,
+        err,
+      );
     }
   };
 
@@ -107,3 +111,11 @@ export const DragFillWidget: WidgetComponent<DragFillLevel> = ({
     </div>
   );
 };
+
+// No directJudge — drag-fill is always judge.kind 'emulator' (L2-1 et al.):
+// the payload is really assembled and run, see handleSubmit above.
+// eslint-disable-next-line react-refresh/only-export-components -- self-registration bundle (see widgetDefinition.ts)
+export const dragFillWidget = defineWidget<DragFillStep>({
+  type: "drag-fill",
+  Component: DragFillWidget,
+});
