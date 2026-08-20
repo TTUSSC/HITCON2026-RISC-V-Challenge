@@ -3,6 +3,7 @@ import { ThemeToggle } from "./components/ThemeToggle";
 import { EntryPage } from "./pages/EntryPage";
 import { MapPage } from "./pages/MapPage";
 import { LevelPage } from "./pages/LevelPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import "./App.css";
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
           <Route path="/" element={<EntryPage />} />
           <Route path="/path" element={<MapPage />} />
           <Route path="/level/:levelId" element={<LevelPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
     </BrowserRouter>
