@@ -20,6 +20,7 @@ import type { DragFillStep } from "../engine/types";
 import { assembleToElf } from "../engine/assembler";
 import { useSubmitState } from "../engine/submitState";
 import { RichText } from "./RichText";
+import { MemoryCells } from "../components/MemoryCells";
 import "./widgets.css";
 
 export const DragFillWidget: WidgetComponent<DragFillStep> = ({
@@ -69,6 +70,18 @@ export const DragFillWidget: WidgetComponent<DragFillStep> = ({
     <div className="widget widget-drag-fill">
       <h2>{schema.title}</h2>
       <RichText text={schema.prompt} />
+
+      {schema.memoryVisual && (
+        <MemoryCells
+          baseRegister={schema.memoryVisual.baseRegister}
+          baseValue={schema.memoryVisual.baseValue}
+          cells={schema.memoryVisual.cells}
+          bytesPerCell={schema.memoryVisual.bytesPerCell}
+          highlightOffset={schema.memoryVisual.highlightOffset}
+          direction={schema.memoryVisual.direction}
+          targetRegister={schema.memoryVisual.targetRegister}
+        />
+      )}
 
       <div className="drag-fill-slots">
         {schema.slots.map((slot) => (

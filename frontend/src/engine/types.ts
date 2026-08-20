@@ -256,6 +256,11 @@ export interface DragFillStep extends StepBase {
   // `_start:` label + syscall number setup before, an exit syscall after.
   asmPrefix?: string;
   asmSuffix?: string;
+  // Optional general addressed-memory visual (cogload-review-L2.md finding
+  // #2: L2-1's practice step asked for a memory address with no memory map
+  // ever shown) — see MemoryVisualSpec above. Same optional field already on
+  // ObservationStep/FillBlankStep.
+  memoryVisual?: MemoryVisualSpec;
 }
 
 export interface LeverSliderStep extends StepBase {

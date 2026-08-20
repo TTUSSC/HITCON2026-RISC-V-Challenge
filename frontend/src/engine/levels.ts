@@ -769,25 +769,63 @@ export const L2_1: LevelSchema = {
       },
     },
     {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "標籤也能指到記憶體位置",
+      prompt:
+        "L0 教過標籤幫一行指令取名字，同樣的道理，標籤也可以幫記憶體裡的一塊資料取名字。這裡的 `msg` 就是這麼一個標籤，指向存著「HI」這兩個字元的位置。`la a1, msg`（load address）會把 `msg` 實際的位址算出來放進 `a1`，你完全不用知道那個位址是多少，`la` 幫你算好了。",
+      memoryVisual: {
+        baseRegister: "a1",
+        baseValue: "→",
+        cells: [
+          { offset: 0, value: "H", label: "msg" },
+          { offset: 1, value: "I" },
+        ],
+        bytesPerCell: 1,
+        highlightOffset: 0,
+      },
+    },
+    {
       widgetType: "drag-fill",
       judge: { kind: "emulator", expect: { stdout: "HI" } },
-      title: "拖曳字串位址／長度",
+      title: "拖曳指令組出 write",
       prompt:
-        "拖曳字串位址／長度進 `a1`／`a2`，組出一段能印出 **HI** 的 shellcode。",
+        "拖曳指令進 `a1`／`a2`，組出一段能印出 **HI** 的 shellcode。`a1` 要放能拿到 `msg` 位址的那行指令，不是你自己猜的數字。",
+      memoryVisual: {
+        baseRegister: "a1",
+        baseValue: "→",
+        cells: [
+          { offset: 0, value: "H", label: "msg" },
+          { offset: 1, value: "I" },
+        ],
+        bytesPerCell: 1,
+        highlightOffset: 0,
+      },
       slots: [
         {
           id: "a1",
           label: "字串位址",
-          options: ["0x10000", "0x20000", "0x30000"],
-          answer: "0x10000",
-          // "0x10000" reads as "the string's real address" (msg happens to
-          // sit right at this program's base address) — the wrong options
-          // point at unmapped memory, so a wrong pick crashes instead of
-          // printing.
+          options: ["la a1, msg", "li a1, 0x20000", "mv a1, a0"],
+          answer: "la a1, msg",
+          // The options are the actual instruction text now, not opaque hex
+          // numbers — `optionAsm` matches its displayed label exactly, so
+          // there's no more silently-wrong mapping between what's shown and
+          // what runs (cogload-review-L2.md finding #2). "la a1, msg" is the
+          // only one that ever points a1 at the real (assembler-resolved)
+          // address of `msg` — the correct behavior never requires knowing
+          // that number, matching the previous step's point. "li a1,
+          // 0x20000" is a literal into unmapped memory (this program's
+          // actual footprint stays well under that address), so it crashes
+          // on the write syscall instead of printing. "mv a1, a0" copies
+          // a0's value at this point in the program — a0 hasn't been set to
+          // the stdout fd yet (that happens later, in asmSuffix's "li a0,
+          // 1"), so a0 is still its reset value (0), and a1 ends up
+          // pointing at unmapped low memory — also a crash, not a silent
+          // wrong-but-passing output.
           optionAsm: {
-            "0x10000": "la a1, msg",
-            "0x20000": "li a1, 0x20000",
-            "0x30000": "li a1, 0x30000",
+            "la a1, msg": "la a1, msg",
+            "li a1, 0x20000": "li a1, 0x20000",
+            "mv a1, a0": "mv a1, a0",
           },
         },
         {
