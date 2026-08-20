@@ -19,6 +19,7 @@
 // without duplicating the syscall/register/instruction data.
 
 import { BookOpen, X } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CheatSheetContent } from "./CheatSheetContent";
 import "./CheatSheet.css";
 
@@ -28,35 +29,54 @@ export interface CheatSheetProps {
 }
 
 export function CheatSheet({ open, onClose }: CheatSheetProps) {
-  if (!open) return null;
+  const prefersReducedMotion = useReducedMotion();
 
   return (
-    <div className="cheatsheet-overlay" onClick={onClose}>
-      <div
-        className="cheatsheet-sheet"
-        role="dialog"
-        aria-label="速查表"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="cheatsheet-header">
-          <div className="cheatsheet-title">
-            <BookOpen size={18} />
-            <span>速查表</span>
-          </div>
-          <button
-            type="button"
-            className="cheatsheet-close-btn"
-            onClick={onClose}
-            aria-label="關閉速查表"
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="cheatsheet-overlay"
+          onClick={onClose}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
+        >
+          <motion.div
+            className="cheatsheet-sheet"
+            role="dialog"
+            aria-label="速查表"
+            onClick={(e) => e.stopPropagation()}
+            initial={{ y: prefersReducedMotion ? 0 : "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: prefersReducedMotion ? 0 : "100%" }}
+            transition={{
+              type: prefersReducedMotion ? "tween" : "spring",
+              stiffness: 380,
+              damping: 34,
+            }}
           >
-            <X size={20} />
-          </button>
-        </div>
+            <div className="cheatsheet-header">
+              <div className="cheatsheet-title">
+                <BookOpen size={18} />
+                <span>速查表</span>
+              </div>
+              <button
+                type="button"
+                className="cheatsheet-close-btn"
+                onClick={onClose}
+                aria-label="關閉速查表"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
-        <div className="cheatsheet-body">
-          <CheatSheetContent />
-        </div>
-      </div>
-    </div>
+            <div className="cheatsheet-body">
+              <CheatSheetContent />
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
