@@ -9,6 +9,7 @@ vi.mock("../../src/leaderboard/queries", () => ({
 import progressHandler from "../../api/leaderboard/progress";
 import leaderboardHandler from "../../api/leaderboard/index";
 import { fetchBestPasses, recordProgress } from "../../src/leaderboard/queries";
+import { MAX_LIMIT } from "../../src/leaderboard/ranking";
 
 interface FakeRes {
   statusCode: number;
@@ -135,7 +136,7 @@ describe("GET /api/leaderboard", () => {
       req({ method: "GET", query: { limit: "99999" } }),
       res as unknown as VercelResponse,
     );
-    expect(fetchBestPasses).toHaveBeenCalledWith(200);
+    expect(fetchBestPasses).toHaveBeenCalledWith(MAX_LIMIT);
   });
 
   it("refuses a POST", async () => {
