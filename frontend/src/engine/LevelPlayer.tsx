@@ -219,7 +219,13 @@ export function LevelPlayer({
           animate={feedbackAnimate}
           transition={{ duration: prefersReducedMotion ? 0.15 : 0.4 }}
         >
-          <Widget schema={step} onPass={handleStepPass} />
+          {/* key=stepKey forces a full remount on every step change — without
+              it, two consecutive steps sharing a widgetType (e.g. two
+              fill-blank or two drag-order steps in a row) reuse the same
+              component instance, so its internal useState (picked answers,
+              drag order, slider value, typed code) never re-initializes and
+              silently carries over from the previous step. */}
+          <Widget key={stepKey} schema={step} onPass={handleStepPass} />
           {submitState === "running" && <RunStatusTicker />}
           <AnimatePresence>
             {submitState === "wrong" && (

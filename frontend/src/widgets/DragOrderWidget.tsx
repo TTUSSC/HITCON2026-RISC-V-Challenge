@@ -31,12 +31,26 @@ interface SortableItem {
   label: string;
 }
 
+// Fisher-Yates — content authors naturally write `items` in the correct
+// order while drafting a level (see L2-2/L2-5c's git history), so starting
+// the list in schema order would show the puzzle pre-solved. Shuffled once
+// per mount (LevelPlayer keys each step's <Widget> by stepKey, so a fresh
+// shuffle happens on every step change, not just once per level).
+function shuffled<T>(items: T[]): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 export const DragOrderWidget: WidgetComponent<DragOrderStep> = ({
   schema,
   onPass,
 }) => {
-  const [items, setItems] = useState<SortableItem[]>(
-    schema.items.map((item) => ({ id: item.id, label: item.label })),
+  const [items, setItems] = useState<SortableItem[]>(() =>
+    shuffled(schema.items.map((item) => ({ id: item.id, label: item.label }))),
   );
   const isRunning = useSubmitState() === "running";
 
