@@ -64,4 +64,13 @@ describe("when the leaderboard is configured", () => {
     await waitFor(() => expect(screen.getByText(/還沒有人上榜/)).toBeDefined());
     expect(screen.queryByRole("alert")).toBeNull();
   });
+
+  it("shows how many players are on the board", async () => {
+    vi.mocked(fetchLeaderboard).mockResolvedValue([
+      entry,
+      { ...entry, rank: 2, displayName: "小美", depth: 6, levelId: "L1-2" },
+    ]);
+    render(<LeaderboardPage />);
+    await waitFor(() => expect(screen.getByText(/共 2 人上榜/)).toBeDefined());
+  });
 });

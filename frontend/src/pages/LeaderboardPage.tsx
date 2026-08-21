@@ -73,16 +73,19 @@ export function LeaderboardPage() {
       )}
 
       {state.status === "ready" && state.entries.length > 0 && (
-        <ol className="leaderboard-list">
-          {state.entries.map((item) => (
-            <li key={item.rank} className="leaderboard-row">
-              <span className="leaderboard-rank">{item.rank}</span>
-              <span className="leaderboard-name">{item.displayName}</span>
-              <span className="leaderboard-entry-point">{item.entryPoint}</span>
-              <span className="leaderboard-level">{item.levelId}</span>
-            </li>
-          ))}
-        </ol>
+        <>
+          <p className="leaderboard-count">共 {state.entries.length} 人上榜</p>
+          <ol className="leaderboard-list">
+            {state.entries.map((item) => (
+              <li key={item.rank} className="leaderboard-row">
+                <span className="leaderboard-rank">{item.rank}</span>
+                <span className="leaderboard-name">{item.displayName}</span>
+                <span className="leaderboard-entry-point">{item.entryPoint}</span>
+                <span className="leaderboard-level">{item.levelId}</span>
+              </li>
+            ))}
+          </ol>
+        </>
       )}
     </div>
   );

@@ -19,8 +19,8 @@ export interface LeaderboardEntry {
   reachedAt: string;
 }
 
-export const DEFAULT_LIMIT = 50;
-export const MAX_LIMIT = 200;
+export const DEFAULT_LIMIT = 1000;
+export const MAX_LIMIT = 1000;
 
 export function parseLimit(raw: unknown): number {
   if (typeof raw === "string") {

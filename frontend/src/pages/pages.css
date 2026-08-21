@@ -481,3 +481,10 @@
   background: var(--bg-sunken);
   border-radius: 0.4rem;
 }
+
+.leaderboard-count {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
