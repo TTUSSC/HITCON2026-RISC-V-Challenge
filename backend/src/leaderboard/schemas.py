@@ -1,7 +1,8 @@
 """Pydantic request schema and validation for the leaderboard's progress
-endpoint -- the Python port of validate.ts. Read that file's comments before
-touching this one; several of the rules below look arbitrary in isolation
-but were arrived at by fixing real bugs, and each comment below says which.
+endpoint -- the Python port of validate.ts, removed along with the rest of
+the TypeScript backend once this port finished (see git history for it).
+Several of the rules below look arbitrary in isolation but were arrived at
+by fixing real bugs, and each comment below says which.
 
 Two behaviours this file exists to preserve exactly:
 

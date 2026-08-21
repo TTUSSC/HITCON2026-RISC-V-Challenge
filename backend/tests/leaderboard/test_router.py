@@ -1,9 +1,11 @@
 """Tests for src.leaderboard.router -- the Python port of the two Vercel
 handlers routes/progress.ts and routes/list.ts (reached via
-api/leaderboard/progress.ts and api/leaderboard/index.ts).
+api/leaderboard/progress.ts and api/leaderboard/index.ts) -- all four
+removed when the TypeScript backend was retired; see git history for them.
 
-Mirrors backend/test/leaderboard/handlers.test.ts, with src.leaderboard.queries
-mocked exactly like handlers.test.ts's `vi.mock("../../src/leaderboard/queries")`
+Mirrored backend/test/leaderboard/handlers.test.ts (also removed; see git
+history), with src.leaderboard.queries mocked exactly like
+handlers.test.ts's `vi.mock("../../src/leaderboard/queries")`
 -- these are HTTP-boundary tests, not database tests, so no real Postgres
 connection is ever opened. Uses FastAPI's TestClient against the *real*
 `app` from src.app (not a reconstructed test-only app), so the CORS

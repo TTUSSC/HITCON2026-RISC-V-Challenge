@@ -1,9 +1,11 @@
 """Tests for src.leaderboard.schemas -- the Python port of validate.ts.
 
-Mirrors backend/test/leaderboard/validate.test.ts case-for-case (14 cases:
-4 for sanitize_display_name, 10 for parse_progress_body), plus checks that
-only make sense in the Python port: that ProgressRequest actually accepts
-the frontend's camelCase field names (and rejects the Python ones), and
+Mirrored backend/test/leaderboard/validate.test.ts case-for-case (14 cases:
+4 for sanitize_display_name, 10 for parse_progress_body; that file was
+removed when the TypeScript backend was retired, see git history for it),
+plus checks that only make sense in the Python port: that ProgressRequest
+actually accepts the frontend's camelCase field names (and rejects the
+Python ones), and
 that a client-supplied "depth" is discarded structurally rather than merely
 overwritten later. See schemas.py's docstrings for why each rule exists.
 """

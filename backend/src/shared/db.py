@@ -1,8 +1,9 @@
 """Connection only -- no feature-specific SQL belongs here. Each feature
 keeps its queries beside the rest of that feature (see
 src/leaderboard/queries.py), so adding a second feature never touches this
-file. The Python port of db.ts; read that file's comments before touching
-this one.
+file. The Python port of db.ts, which was removed along with the rest of
+the TypeScript backend when this port finished (see git history for it);
+the reasoning its comments recorded is carried forward below.
 
 db.ts memoizes an HTTP-based client on purpose: a Vercel serverless function
 is torn down after each request, so a pooled TCP client would leak

@@ -1,7 +1,8 @@
 """Tests for src.shared.levels — the level-order table the whole leaderboard
 ranking scheme depends on.
 
-Mirrors backend/test/shared/levels.test.ts case-for-case. See that file and
+Mirrored backend/test/shared/levels.test.ts case-for-case (removed when the
+TypeScript backend was retired; see git history for that file). See
 src/shared/levels.py's module docstring for why "L2-0 lands at depth 9" is
 the one case below that isn't just sampling: it is what lets an L2 entrant
 who clears L2-0 tie an L0 entrant who ground through eight levels to reach

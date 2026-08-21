@@ -1,7 +1,9 @@
 """APIRouter for the leaderboard feature -- the Python port of
 routes/progress.ts and routes/list.ts (reached via
-api/leaderboard/progress.ts and api/leaderboard/index.ts). Read both files'
-comments before touching this one.
+api/leaderboard/progress.ts and api/leaderboard/index.ts), all four removed
+along with the rest of the TypeScript backend once this port finished (see
+git history for them); the reasoning their comments recorded is carried
+forward below.
 
 Route paths are written out in full, /api prefix included, rather than
 built from an APIRouter(prefix=...): Vercel rewrites all of /api/* to this

@@ -1,7 +1,9 @@
 """Tests for src.leaderboard.ranking -- the Python port of ranking.ts.
 
-Mirrors backend/test/leaderboard/ranking.test.ts case-for-case (12 cases: 5
-for parse_limit, 7 for rank_entries), plus checks that only make sense in
+Mirrored backend/test/leaderboard/ranking.test.ts case-for-case (12 cases: 5
+for parse_limit, 7 for rank_entries; that file was removed when the
+TypeScript backend was retired, see git history for it), plus checks that
+only make sense in
 the Python port: that LeaderboardEntry actually serialises to the
 frontend's camelCase field names, and that a Python `bool` (a subtype of
 `int`) is not mistaken for a numeric limit. See ranking.py's docstrings for

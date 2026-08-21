@@ -1,5 +1,7 @@
-"""Ranking the leaderboard -- the Python port of ranking.ts. Read that
-file's comments before touching this one.
+"""Ranking the leaderboard -- the Python port of ranking.ts, removed along
+with the rest of the TypeScript backend once this port finished (see git
+history for it); the reasoning its comments recorded is carried forward
+below.
 
 LeaderboardEntry is the one shape in this backend that goes straight onto
 the wire as-is: GET /api/leaderboard responds with `{"entries": [...]}`,

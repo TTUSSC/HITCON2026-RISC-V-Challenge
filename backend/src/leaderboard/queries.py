@@ -1,6 +1,6 @@
-"""SQL for the leaderboard feature -- the Python port of queries.ts. Read
-that file's comments before touching this one; the reasoning below is
-carried over, not reinvented.
+"""SQL for the leaderboard feature -- the Python port of queries.ts, removed
+along with the rest of the TypeScript backend once this port finished (see
+git history for it); the reasoning below is carried over, not reinvented.
 
 Both statements are copied verbatim from queries.ts (parameter placeholders
 translated from neon's tagged-template `${...}` interpolation to psycopg's
