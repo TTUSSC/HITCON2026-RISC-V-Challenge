@@ -8,12 +8,16 @@ Vercel-specific wiring stops at api/index.py, which does nothing but import
 running on Vercel.
 """
 
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from src.leaderboard.router import router as leaderboard_router
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -51,10 +55,33 @@ async def handle_validation_error(
     together in logs for what is, from this API's point of view, the same
     kind of failure, which would make debugging a real spike in bad
     requests harder to spot later.
+
+    `exc.errors()` is logged, never put in the response body. It used to
+    be included as a `detail` key, which is FastAPI's own convention for
+    its default 422 handler -- but exc.errors() is not always
+    JSON-serialisable as-is: when a client sends a non-empty body with a
+    Content-Type FastAPI does not treat as JSON (missing entirely,
+    `text/plain`, `application/x-www-form-urlencoded`), FastAPI cannot
+    attempt to decode the body at all and raises RequestValidationError
+    with the *raw request bytes* in each error dict's `input` field.
+    JSONResponse.render() calls stdlib json.dumps() with no custom
+    encoder, which cannot serialise `bytes` -- so building the response
+    this way raised TypeError from inside this very handler, on an
+    unauthenticated, publicly reachable endpoint, turning a 400-shaped
+    input problem into a real 500. `jsonable_encoder(exc.errors())` (what
+    FastAPI's own default handler uses) would also have fixed the crash,
+    but dropping `detail` outright was chosen instead: nothing reads it
+    (see above), it removes this whole class of "something unserialisable
+    ends up in an error response" rather than today's one instance of it,
+    and it makes both sources of a 400 on the progress endpoint --
+    this handler and parse_progress_body's ParseError in router.py --
+    return the identical `{"ok", "error"}` shape instead of this one
+    carrying an extra `detail` key the other never had.
     """
+    logger.warning("request validation failed: %s", exc.errors())
     return JSONResponse(
         status_code=400,
-        content={"ok": False, "error": "invalid request", "detail": exc.errors()},
+        content={"ok": False, "error": "invalid request"},
     )
 
 

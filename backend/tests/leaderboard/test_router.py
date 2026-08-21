@@ -41,6 +41,14 @@ from src.leaderboard.schemas import ProgressInput
 
 client = TestClient(app)
 
+# raise_server_exceptions=False makes an unhandled exception inside the app
+# surface as the real 500 response a production client would see, instead
+# of propagating out of .post()/.get() and into this test process as a
+# raw Python exception (which would look like a test error, not an
+# application bug). Used only by TestValidationHandlerSurvivesNonJsonBodies
+# below, which exists specifically to observe that boundary.
+safe_client = TestClient(app, raise_server_exceptions=False)
+
 VALID_BODY: dict[str, Any] = {
     "profileId": "3f2a4b6c-1111-2222-3333-444455556666",
     "displayName": "阿明",
@@ -140,6 +148,83 @@ class TestPostProgress:
     def test_refuses_a_get(self) -> None:
         response = client.get("/api/leaderboard/progress")
         assert response.status_code == 405
+
+
+class TestValidationHandlerSurvivesNonJsonBodies:
+    """Fix round 1 regression coverage.
+
+    A non-empty body sent with a Content-Type FastAPI does not treat as
+    JSON (missing entirely, `text/plain`, or `application/x-www-form-urlencoded`)
+    makes FastAPI raise RequestValidationError with the *raw request bytes*
+    in each error dict's `input` field -- it never attempts to decode the
+    body as JSON at all in this case, regardless of whether the bytes
+    would actually have parsed. Before the fix, app.py's
+    RequestValidationError handler passed `exc.errors()` -- bytes and
+    all -- straight into JSONResponse, whose render() calls stdlib
+    json.dumps() with no custom encoder. json.dumps() cannot serialise
+    bytes, so the handler itself raised TypeError, which escaped FastAPI
+    entirely and was answered by Starlette's outermost
+    ServerErrorMiddleware as a bare-text 500 -- turning a 400-shaped input
+    validation problem into a real, publicly triggerable server error on
+    an unauthenticated endpoint.
+
+    Every case here uses safe_client (raise_server_exceptions=False) so a
+    regression shows up as the 500 it actually is, not as an exception
+    thrown out of the test itself.
+    """
+
+    def test_no_content_type_header_returns_400_not_500(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mock_record = Mock(return_value=None)
+        monkeypatch.setattr(queries, "record_progress", mock_record)
+
+        body = b"marker-blank-content-type: profileId=x&displayName=y"
+        response = safe_client.post("/api/leaderboard/progress", content=body)
+
+        assert response.status_code == 400
+        assert response.headers["content-type"].startswith("application/json")
+        assert response.json()  # decodes cleanly; a 500 body would not be JSON at all
+        assert "marker-blank-content-type" not in response.text
+        mock_record.assert_not_called()
+
+    def test_text_plain_content_type_returns_400_not_500(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mock_record = Mock(return_value=None)
+        monkeypatch.setattr(queries, "record_progress", mock_record)
+
+        body = b"marker-text-plain: this is not json at all"
+        response = safe_client.post(
+            "/api/leaderboard/progress",
+            content=body,
+            headers={"content-type": "text/plain"},
+        )
+
+        assert response.status_code == 400
+        assert response.headers["content-type"].startswith("application/json")
+        assert response.json()
+        assert "marker-text-plain" not in response.text
+        mock_record.assert_not_called()
+
+    def test_form_urlencoded_content_type_returns_400_not_500(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mock_record = Mock(return_value=None)
+        monkeypatch.setattr(queries, "record_progress", mock_record)
+
+        body = b"marker-form-urlencoded=1&profileId=x&displayName=y&entryPoint=L1&levelId=L2-0"
+        response = safe_client.post(
+            "/api/leaderboard/progress",
+            content=body,
+            headers={"content-type": "application/x-www-form-urlencoded"},
+        )
+
+        assert response.status_code == 400
+        assert response.headers["content-type"].startswith("application/json")
+        assert response.json()
+        assert "marker-form-urlencoded" not in response.text
+        mock_record.assert_not_called()
 
 
 class TestGetLeaderboard:
