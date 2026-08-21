@@ -1366,22 +1366,141 @@ export const L2_3: LevelSchema = {
   id: "L2-3",
   title: "填出正確的 syscall 編號",
   onPass: { advance: "L2-4" },
+  // Rebuilt per docs/design/cogload-review-L2.md's L2-3 punch list + the
+  // repo owner's three complaints on the old 2-step version:
+  //   1. all 4 numbers used to be dumped on one observation screen before
+  //      any practice — pure declarative memorization (level-design-
+  //      principles.md's "用歸納，不要用宣告"). Now each number is revealed
+  //      right before the step that practices it, and read/write are
+  //      introduced by contrast (63 vs 64, "只差一個號碼") instead of a
+  //      flat 4-row table.
+  //   2. the only practice step was judge:"direct" with no asmLines set,
+  //      so despite FillBlankWidget's own doc comment claiming this level
+  //      reads as an inline-asm crash course, it actually rendered as bare
+  //      option buttons with zero `li a7, ___` context (cogload-review-
+  //      L2.md's exact bug report). Fixed: every fill-blank below sets
+  //      asmLines, and the closing step is a real judge:"emulator" check
+  //      (same pattern as L1-2's closing step) — genuinely assembled and
+  //      run on rv32emu, not string-compared, so this level isn't 100%
+  //      judge:"direct" despite its topic being "which number" rather than
+  //      "which register".
+  //   3. exit(93) used to appear with zero explanation of why a program
+  //      needs it. The observation step right before it states the "why"
+  //      (system needs to be told the program is done, to reclaim its
+  //      resources) before the number is revealed.
+  //
+  // Scope stays a warm-up for L2-4: only the *number* goes into a7 here,
+  // never the full argument registers (fd/buf/len) or fd-preservation
+  // (`mv s1, a0`) — L2-4 owns "complete syscall + parameters" as its own
+  // new content, so pre-teaching that here would steal L2-4's actual job.
+  //
+  // 8-step sequence: write recall (already-known fact, framed as the
+  // level's opener) -> read introduced by contrast with write -> read
+  // practice -> a merged checkpoint requiring read+write together in the
+  // real ORW order (level-design-principles.md's "至少一次合併檢查點") ->
+  // open introduced (cold fact recap from L2-0) -> open practice -> exit's
+  // "why" -> exit practice, real emulator judge.
   steps: [
+    {
+      widgetType: "fill-blank",
+      judge: { kind: "direct" },
+      title: "先從最熟的開始：印出結果",
+      prompt:
+        "上一關的 open→read→write 骨架已經幫你排好編號執行過一次，這關換你自己判斷該填哪個。先從最熟的開始——`write` 印出結果，`a7` 該填多少？",
+      asmLines: ["li a7, {{number}}   # 印出結果", "ecall"],
+      blanks: [
+        { id: "number", answer: "64", options: ["93", "64", "1024", "63"] },
+      ],
+    },
     {
       widgetType: "observation",
       judge: { kind: "none" },
-      title: "四個編號，四個服務",
+      title: "read 跟 write 只差一個號碼",
       prompt:
-        "rv32emu 是 newlib/riscv-pk 風格的精簡 syscall table，這條技能樹會用到的編號只有四個：\n- `open` = 1024\n- `read` = 63\n- `write` = 64\n- `exit` = 93\n\n骨架已經幫你搭好 `li a7, ___` 跟 `ecall`，這步只考「印出東西該填哪個編號」。",
+        "`read` 做的事跟 `write` 方向相反——不是把資料送出去，是把資料讀進來。它的編號緊接在 `write` 前面一號：`read = 63`。",
     },
     {
       widgetType: "fill-blank",
       judge: { kind: "direct" },
-      title: "填出正確的 syscall 編號",
-      prompt:
-        "給有洞的骨架（`li a7, ___` / `ecall` 結構都在），從有限選項填暫存器名稱或立即值。目標是印出 `write` 的結果。",
+      title: "把檔案內容讀進來，該填哪個編號？",
+      prompt: "ORW 接力的第二棒：把檔案內容讀進緩衝區。`a7` 該填多少？",
+      asmLines: ["li a7, {{number}}   # 讀進緩衝區", "ecall"],
       blanks: [
-        { id: "a7value", answer: "64", options: ["1024", "63", "64", "93"] },
+        { id: "number", answer: "63", options: ["64", "1024", "63", "93"] },
+      ],
+    },
+    {
+      widgetType: "fill-blank",
+      // Merged checkpoint (level-design-principles.md's "至少一次合併檢查
+      // 點") — read and write were each taught/tested in their own step
+      // above; this step requires both correct, in the real ORW order, in
+      // one submission, instead of only ever being tested one fact at a
+      // time. judge:"direct" (not emulator): checking two sequential a7
+      // writes for their own intermediate values isn't what
+      // buildRegisterProbeProgram's checkRegister supports (it reads a
+      // register's FINAL value after setupAsmTemplate runs, so a second
+      // `li a7, ...` would just overwrite the first) — forcing that would
+      // need an artificial `mv` into a spare register never taught this
+      // early, which is exactly the kind of premature s1-style
+      // preservation this level is scoped to avoid (see file header).
+      judge: { kind: "direct" },
+      title: "先讀、再印：兩個編號一次填對",
+      prompt:
+        "檔案開啟後，接下來是先 `read` 把內容讀進緩衝區，再 `write` 印出來——同一段程式裡兩個編號都要對。",
+      asmLines: [
+        "li a7, {{readNum}}   # 先讀進緩衝區",
+        "ecall",
+        "li a7, {{writeNum}}   # 再印出來",
+        "ecall",
+      ],
+      blanks: [
+        { id: "readNum", answer: "63", options: ["64", "63", "1024", "93"] },
+        { id: "writeNum", answer: "64", options: ["63", "64", "93", "1024"] },
+      ],
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "開檔案的編號比較特別",
+      prompt:
+        "在讀之前要先用 `open` 開啟檔案。它的編號不是個位數或兩位數，而是 **1024**——L2-0 提過，rv32emu 的 syscall table 很精簡，只做了 `open`，沒有常見 Linux 上的 `openat`，所以編到了一個比較大的號碼。",
+    },
+    {
+      widgetType: "fill-blank",
+      judge: { kind: "direct" },
+      title: "開啟檔案，該填哪個編號？",
+      prompt: "ORW 接力的第一棒。`a7` 該填多少？",
+      asmLines: ["li a7, {{number}}   # 開啟檔案", "ecall"],
+      blanks: [
+        { id: "number", answer: "1024", options: ["63", "1024", "64", "93"] },
+      ],
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "程式結束前，要告訴系統一聲",
+      prompt:
+        "程式做完事情不會自己憑空消失——要呼叫一個服務告訴系統「我執行完了，可以回收這個程式占用的資源」，不然程式會停在原地，系統也不知道該不該收尾。這個服務叫 `exit`，編號是 93。",
+    },
+    {
+      widgetType: "fill-blank",
+      // Real emulator+register-probe judging (same pattern as L1-2's
+      // closing step, see that level's comment) — this is the step that
+      // actually assembles and runs on rv32emu, satisfying the platform's
+      // "every graded practice is a real judge" rule for this level.
+      // `ecall` stays in asmLines only (narrative continuity, same
+      // asymmetry L0-2/L1-2 already use) — setupAsmTemplate omits it so a
+      // wrong pick doesn't trigger a real exit() before the probe's own
+      // report-the-register code runs. checkRegister must be set
+      // explicitly to "a7" (FillBlankWidget's default is "a0").
+      judge: { kind: "emulator", expect: { registers: { a7: 93 } } },
+      title: "驗證：程式結束前該填哪個編號？",
+      prompt: "最後一棒，真的組譯執行看看——結束程式，`a7` 該填多少？",
+      setupAsmTemplate: "li a7, {{number}}",
+      checkRegister: "a7",
+      asmLines: ["li a7, {{number}}   # 結束程式", "ecall"],
+      blanks: [
+        { id: "number", answer: "93", options: ["64", "1024", "63", "93"] },
       ],
     },
   ],
