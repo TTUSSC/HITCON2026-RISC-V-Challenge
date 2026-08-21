@@ -1296,11 +1296,18 @@ export const L2_2: LevelSchema = {
         {
           id: "read-a7",
           label: "li a7, 63     # read syscall number",
-          // a1/a2 (buf/len) aren't being taught by this step (that's
-          // L1-2/L1-3's job) — bundled here, right before read's own ecall,
-          // so a wrong drag order still genuinely breaks (e.g. dragging this
-          // before open leaves a0 without a real fd).
-          asm: "    li a7, 63\n    la a1, buf\n    li a2, 13",
+          asm: "    li a7, 63",
+        },
+        {
+          id: "read-args",
+          // Split out from the old combined "read-a7" item (see
+          // answerability-audit-L2.md's L2-2 disclosure nit) — the label
+          // used to only say "li a7, 63" while the asm quietly also set
+          // a1/a2. Now each item's label matches exactly what its asm does.
+          // buf/len (a1/a2) were already taught as read()'s signature back
+          // in L2-0, this item just applies them.
+          label: "la a1, buf ／ li a2, 13   # read 的 a1/a2：buf 位址、長度",
+          asm: "    la a1, buf\n    li a2, 13",
         },
         {
           id: "read-ecall",
@@ -1311,9 +1318,15 @@ export const L2_2: LevelSchema = {
         {
           id: "write-a7",
           label: "li a7, 64     # write syscall number",
-          // a1/a2 already point at buf/len from the read step above; only
-          // a0 needs to switch from "the opened file's fd" to stdout (1).
-          asm: "    li a7, 64\n    li a0, 1",
+          asm: "    li a7, 64",
+        },
+        {
+          id: "write-a0",
+          // Split out from the old combined "write-a7" item — same fix as
+          // read-args above: a0 needs to switch from "the opened file's fd"
+          // to stdout (1), and that's now its own honestly-labeled item.
+          label: "li a0, 1      # fd 換成 1（stdout），才是印到畫面上",
+          asm: "    li a0, 1",
         },
         {
           id: "write-ecall",
@@ -1326,8 +1339,10 @@ export const L2_2: LevelSchema = {
         "open-a0",
         "open-ecall",
         "read-a7",
+        "read-args",
         "read-ecall",
         "write-a7",
+        "write-a0",
         "write-ecall",
       ],
       asmPrefix: "_start:\n",
