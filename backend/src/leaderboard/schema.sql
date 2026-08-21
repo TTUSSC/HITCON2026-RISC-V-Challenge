@@ -20,7 +20,12 @@ create table if not exists players (
 create table if not exists passes (
   profile_id text        not null references players (profile_id) on delete cascade,
   level_id   text        not null,
-  depth      integer     not null check (depth between 1 and 23),
+  -- Lower bound only. depth is derived server-side by depthForLevel(), which
+  -- can only ever return an index into LEVEL_ORDER or undefined (rejected as a
+  -- 400 before reaching SQL), so an upper bound catches nothing the code does
+  -- not already guarantee — it would only pin the schema to today's level count
+  -- and turn "add a 24th level" into a migration on a live database.
+  depth      integer     not null check (depth >= 1),
   passed_at  timestamptz not null default now(),
   primary key (profile_id, level_id)
 );

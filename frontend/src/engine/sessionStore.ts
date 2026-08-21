@@ -101,8 +101,10 @@ export const useSessionStore = create<SessionStore>()(
         });
 
         // Fire-and-forget leaderboard upload. This is the only place in the app
-        // a pass is recorded, so it fires exactly once per level. It no-ops
-        // unless VITE_LEADERBOARD_API is configured and never throws — see
+        // a pass is recorded. It fires once per completion, and completed
+        // levels stay replayable, so repeats are expected — the server's upsert
+        // is idempotent and keeps the first clear time. It no-ops unless
+        // VITE_LEADERBOARD_API is configured and never throws — see
         // leaderboardClient.ts.
         const state = get();
         void submitPass({

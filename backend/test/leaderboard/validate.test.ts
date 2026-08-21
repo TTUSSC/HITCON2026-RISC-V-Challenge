@@ -27,12 +27,15 @@ describe("sanitizeDisplayName", () => {
   });
 
   it("counts the cap in code points so an emoji is not cut in half", () => {
-    // 30 astral-plane characters: a UTF-16 slice(0, 24) would land mid-surrogate
-    // and produce a lone surrogate, which is not valid UTF-8.
-    const name = "🙂".repeat(30);
+    // 23 ASCII letters (UTF-16 indices 0-22) followed by one astral-plane
+    // emoji, whose surrogate pair occupies indices 23-24. A plain
+    // .slice(0, 24) would cut mid-pair — keeping the 23 letters and the
+    // emoji's lone high surrogate but dropping its low surrogate — which is
+    // not valid UTF-8. Slicing by code point keeps the whole emoji instead.
+    const name = "a".repeat(23) + "🙂";
     const result = sanitizeDisplayName(name);
     expect([...result]).toHaveLength(MAX_DISPLAY_NAME_LENGTH);
-    expect(result).toBe("🙂".repeat(MAX_DISPLAY_NAME_LENGTH));
+    expect(result).toBe("a".repeat(23) + "🙂");
   });
 });
 
