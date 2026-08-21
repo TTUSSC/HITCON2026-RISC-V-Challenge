@@ -870,28 +870,146 @@ export const L1_3: LevelSchema = {
 
 export const L1_4: LevelSchema = {
   id: "L1-4",
-  title: "ra 與 sp：先混個眼熟",
+  title: "ra 與 sp：呼叫也會動到記憶體",
   onPass: { advance: "L2-0" },
   // No reward — the repo owner's explicit L1-2 reward decision (see file
   // header) stays as-is; this level gains real interaction (see
-  // level-review-L1.md 5.1/5.2), not a new reward-granting checkpoint.
+  // cogload-review-L1.md 5.1/5.2), not a new reward-granting checkpoint.
+  //
+  // Rebuilt per the repo owner's explicit complaint: "1-4 介紹 ra,sp 就應該
+  // 把 stack 一起講一講，預設會眾是不了解 stack 排列的" — the previous
+  // version named `sp` in one sentence ("堆疊指標，先混眼熟") without ever
+  // showing what it points at, exactly the gap level-design-principles.md's
+  // §2 flags platform-wide: "記憶體這個概念要儘早、獨立地建立……任何要求
+  // 學習者操作地址的關卡，都必須先有一步讓學習者『看到』記憶體長什麼樣
+  // 子。" L1-4 is the first mention of `sp` anywhere in the platform (a full
+  // branch earlier than L2-5a's StackDiagram), so it's the natural place to
+  // build that picture — this is deliberately still framed as a one-cell
+  // "where does the return address live" reveal, not the buffer/canary/
+  // saved-s0/saved-ra stack-overflow layout (that stays L2-5a/L3-1's own
+  // reveal).
+  //
+  // Stack-visual choice: NOT StackDiagram/ObservationStep.stackVisual.
+  // StackDiagram's buildRegions() always renders four fixed regions
+  // (buffer/[canary]/savedS0/savedRa) regardless of size — passing
+  // bufferSize:0 and savedS0Size:0 doesn't hide those rows, it renders them
+  // as label-only rows with zero content cells (rowCount = Math.ceil(0/4)
+  // = 0, so `.stack-region-cells` is an empty div sitting next to a text
+  // label with no visual matter). That reads as two broken/empty rows
+  // bracketing the one real row, not a clean "just ra" diagram, and L1-4
+  // has no buffer/canary/saved-s0 concept to justify their presence even as
+  // placeholders. Used `ObservationStep.memoryVisual` (MemoryCells)
+  // instead — it's the *general* addressed-memory visual already built for
+  // exactly this "base register + a few cells, not the stack-overflow
+  // layout" shape (see MemoryCells.tsx's own header: "StackDiagram is tied
+  // to the buffer/canary/saved-s0/saved-ra stack layout specifically and is
+  // not a fit for general addressed memory"). `baseRegister: "sp"` +
+  // `targetRegister: "ra"` + `direction: "store"` renders exactly "sp 指到
+  // 的位置放了 ra 的值", with the component's own generated caption
+  // ("store：把 ra 的值寫進 sp 指到的格子") saying precisely that — no size-0
+  // edge cases, no leftover stack-overflow visual language to explain away.
+  //
+  // 6-step sequence:
+  //   1. observation — framing bridge: L1-1..L1-3 was registers-only content,
+  //      the arriving question ("怎麼知道要跳回哪一行？") is the reader's
+  //      first nudge toward "something outside registers" (memory), without
+  //      naming it yet.
+  //   2. observation (codeTrace) — jal's actual mechanism: it jumps to func
+  //      AND records the address of the very next line into ra. Shown as a
+  //      real flow diagram (jal -> func, taken path highlighted) with the
+  //      recorded line labeled `after_call:` right there in the code, not a
+  //      bare `BASE_ADDRESS + 4` number with nothing on-screen to derive it
+  //      from — same "UI must supply what the question needs" rule
+  //      level-design-principles.md's §3 requires.
+  //   3. observation (codeTrace) — ret's mechanism: jumps to whatever ra
+  //      currently holds, shown as a second flow diagram (ret -> after_call,
+  //      taken). Kept singular per cogload-review-L1.md's step 4 note — no
+  //      jalr expansion here, that's a separate fact for a later pass.
+  //   4. observation (text only) — the motivating problem: nested calls
+  //      overwrite ra, so a value that needs to survive a second call has to
+  //      live somewhere memory-shaped, not just in a register. This is the
+  //      "why memory" beat the repo owner asked for.
+  //   5. observation (memoryVisual) — the payoff: sp is a register whose
+  //      value is itself a memory address, and the cell it points at is
+  //      where ra's value gets stored so it survives. sp itself still isn't
+  //      tested this level (Boss branch owns that), but now there's a
+  //      concrete picture instead of an abstract "先混眼熟" sentence.
+  //   6. fill-blank, judge:"emulator" — the original practice step, kept
+  //      as-is (the judging mechanism was already correct per the task
+  //      brief), prompt reworded to call back to step 2's worked example.
+  //      registerContext dropped entirely (previously ra/sp/a0/t0, three of
+  //      which never fill — the exact decoy-box pattern
+  //      level-design-principles.md's §3 flags; L1-3's practice step already
+  //      set this precedent).
   steps: [
     {
       widgetType: "observation",
       judge: { kind: "none" },
-      title: "ra 與 sp：先混個眼熟",
+      title: "呼叫函式，不只是暫存器的事",
       prompt:
-        "- `ra`（`x1`，return address）：呼叫函式的 `jal` 會把「呼叫指令的下一行位址」記進 `ra`，函式結束時的 `ret`（其實是 `jalr x0, ra, 0` 這個假指令）就是跳回 `ra` 記住的那個位址。\n- `sp`（`x2`）：堆疊指標，先混眼熟——Boss 分支的整個 stack 佈局會直接用到。\n\n`sp` 現在不考，但 `ra` 現在就練一次：誰記得要跳回哪。",
-      registerContext: ["ra", "sp"],
-      registerLabels: {
-        ra: "return address，跳回哪",
-        sp: "堆疊指標",
+        "L1-1 到 L1-3 看到的都是暫存器的事：引數依序放進 `a0`–`a7`，回傳值也走 `a0`。但還有一件事沒講過：函式做完之後，程式怎麼知道要跳回哪一行繼續執行？這個問題會帶我們去看另一塊還沒出現過的地方——記憶體。",
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "jal 順便記住了下一行",
+      prompt:
+        "`jal ra, func` 呼叫 `func` 的同時，會把下一行的位址（也就是 `after_call:` 那一行）記進 `ra`。之後只要跳回 `ra` 記住的位址，就能接著往下執行 `after_call:`。",
+      registerContext: ["ra"],
+      registerLabels: { ra: "返回位址" },
+      codeTrace: {
+        lines: [
+          { id: "call", text: "jal ra, func" },
+          { id: "after", text: "addi a2, x0, 1", label: "after_call:" },
+          { id: "func", text: "...", label: "func:" },
+        ],
+        currentLineId: "call",
+        takenLineId: "func",
+        executedPath: "taken",
+      },
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "ret：跳回 ra 記住的地方",
+      prompt:
+        "函式做完，執行 `ret` 這個假指令，直接跳回 `ra` 記住的位址——也就是 `after_call:`——不用查表，因為位址早就存在 `ra` 裡了。",
+      codeTrace: {
+        lines: [
+          { id: "func", text: "ret", label: "func:" },
+          { id: "after", text: "addi a2, x0, 1", label: "after_call:" },
+        ],
+        currentLineId: "func",
+        takenLineId: "after",
+        executedPath: "taken",
+      },
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "如果函式裡面又呼叫另一個函式呢？",
+      prompt:
+        "問題來了：如果 `func` 自己又呼叫別的函式，`ra` 會被新呼叫的返回位址蓋掉，原本記著的 `after_call` 位址就不見了。要保住它，得先存進一個不會被蓋掉的地方：記憶體。",
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "存進記憶體：sp 指到的那一格",
+      prompt:
+        "函式如果需要保住 `ra`，會先把值存進記憶體，再去忙別的呼叫，回來後讀回來。`sp`（`x2`，stack pointer）指向這個位置，裝的是記憶體位址，不是一般的數字。`sp` 這一關還不用你自己設定，先建立這張畫面就好，Boss 分支才會真的動手操作它。",
+      memoryVisual: {
+        baseRegister: "sp",
+        baseValue: "位址",
+        cells: [{ offset: 0, value: "ra 的值", label: "返回位址存這裡" }],
+        highlightOffset: 0,
+        direction: "store",
+        targetRegister: "ra",
       },
     },
     {
       widgetType: "fill-blank",
       // Real emulator+register-probe judging, same L0-1..L0-3/L1-2/L1-3
-      // pattern — this is L1-4's new practice step (level-review-L1.md's
+      // pattern — this is L1-4's practice step (level-review-L1.md's
       // top-priority fix: ra was the only named ABI register in the whole
       // platform's stated minimum bar with zero assessment inside the
       // booth-scoped flow). `jal {{rd}}, __l14_after` always jumps to the
@@ -902,7 +1020,9 @@ export const L1_4: LevelSchema = {
       // correct pick (rd=ra) leaves `ra` holding the real link address
       // (BASE_ADDRESS + 4, the address of the instruction right after the
       // jal); any other pick leaves `ra` at its untouched reset value (0),
-      // which genuinely fails the check.
+      // which genuinely fails the check. Judging logic unchanged from the
+      // previous version — only the surrounding steps and this step's
+      // prompt/registerContext changed.
       judge: {
         kind: "emulator",
         expect: { registers: { ra: BASE_ADDRESS + 4 } },
@@ -911,14 +1031,13 @@ export const L1_4: LevelSchema = {
       checkRegister: "ra",
       title: "誰記得要跳回哪？",
       prompt:
-        "`jal` 呼叫函式時，會把「跳過去之前的下一行位址」記錄下來，這樣函式做完 `ret` 才知道要跳回哪。哪個暫存器負責記住這個返回位址？",
+        "剛剛看到 `jal` 呼叫時會自動把下一行的位址記下來。這次換你操作：哪個暫存器負責接住這個返回位址？",
       asmLines: [
         "jal {{rd}}, func   # 呼叫 func",
         "func:",
         "    ret              # 跳回呼叫者",
       ],
       blanks: [{ id: "rd", answer: "ra", options: ["ra", "sp", "a0", "t0"] }],
-      registerContext: ["ra", "sp", "a0", "t0"],
     },
   ],
 };
