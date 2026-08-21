@@ -1758,30 +1758,89 @@ export const L2_5A: LevelSchema = {
 
 export const L2_5B: LevelSchema = {
   id: "L2-5b",
-  title: "選出 win() 的位址",
+  title: "取得 win() 的位址",
   onPass: { advance: "L2-5c" },
   steps: [
     {
       widgetType: "observation",
       judge: { kind: "none" },
-      title: "位址是編出來就固定的",
+      title: "位址是編出來就固定的，但不用自己猜",
       prompt:
-        "`win()` 是這支 binary 裡本來就存在、但正常流程永遠不會被呼叫到的一段程式碼（例如印出 flag 再 exit）。它跟其他函式一樣，編譯完就有一個**固定的記憶體位址**——蓋掉 `saved ra` 時，只要把這個位址填進去，函式 `ret` 的時候就會跳過去執行，而不是跳回原本呼叫它的地方。",
+        "`win()` 是這支 binary 裡本來就存在、但正常流程永遠不會被呼叫到的一段程式碼（例如印出 flag 再 exit）。它跟其他函式一樣，編譯完就有一個**固定的記憶體位址**——蓋掉 `saved ra` 時，只要把這個位址填進去，函式 `ret` 的時候就會跳過去執行，而不是跳回原本呼叫它的地方。\n\n跟 L2-1 的 `la a1, msg` 一樣，組譯器會幫每個標籤（包含函式）算好真實位址。這裡 `win()` 對應的標籤是 `win_label`：`la t0, win_label` 會把它真正的位址取出來放進 `t0`，完全不用自己猜或查十六進位數字。",
+      // Same buffer/s0/ra shape as L2-5a/L2-5c, filled through the end of
+      // saved ra — illustrates "ra now holds win()'s address", the state
+      // this step's practice is about to produce for real.
+      stackVisual: {
+        bufferSize: 32,
+        mode: "offset",
+        savedS0Size: 4,
+        savedRaSize: 4,
+        fillLength: 40,
+      },
     },
     {
-      widgetType: "fill-blank",
-      judge: { kind: "direct" },
-      title: "選出 win() 的位址",
+      widgetType: "drag-fill",
+      // Same L2-1 pattern: options are real asm text, not opaque hex
+      // numbers (cogload-review-L2.md finding #2 / the "誠實性" self-check
+      // in level-design-principles.md — a hardcoded hex answer can't be
+      // derived from anything on screen, a label-address instruction can).
+      // "la t0, win_label" is the only option that ever resolves to the
+      // assembler's real computed address for this program's win_label —
+      // exactly the mechanism L2-5c's win-addr item ("la t0, win_label; sw
+      // t0, 0(t1)") depends on, so this step is genuinely its lead-in, not
+      // a different mental model.
+      //   - "li t0, 0x10050" / "li t0, 0x100a0": literal guesses at a
+      //     number nothing on screen ever revealed — land outside this
+      //     small self-contained program's own code, so the ra "return"
+      //     below jumps into unmapped/garbage territory and never prints.
+      //   - "mv t0, ra": copies the *current* ra, which at this point in
+      //     _start is still its reset value (0) — jumps to address 0,
+      //     also never prints.
+      // asmSuffix writes t0 into a stand-in "saved ra" slot, reads it back
+      // into the real `ra` register, and executes `ret` (jalr x0, ra, 0) —
+      // only "la t0, win_label" lands on win_label and prints WIN!, so
+      // judge.expect.stdoutContains checks a fact the emulator run
+      // demonstrates, not a number the schema asserts.
+      judge: { kind: "emulator", expect: { stdoutContains: "WIN!" } },
+      title: "選出真的能取到 win() 位址的做法",
       prompt:
-        "從候選清單選出／填入 `win()` 的位址（選單挑，不用手打十六進位）。",
-      blanks: [
+        "從選項中選出能把 `win()` 真實位址放進 `t0` 的正確做法。選對送出後，會真的組譯執行一段小程式：把 `t0` 寫進模擬的 `saved ra`，再讓程式 `ret` 過去，看看是不是真的落在 `win()` 上。",
+      slots: [
         {
           id: "winAddr",
-          // TODO: placeholder pending real test ELF (see levels.md 待驗證/待辦)
-          answer: "0x10074",
-          options: ["0x10050", "0x10074", "0x100a0", "0x100c8"],
+          label: "取得 win() 位址",
+          options: [
+            "la t0, win_label",
+            "li t0, 0x10050",
+            "li t0, 0x100a0",
+            "mv t0, ra",
+          ],
+          answer: "la t0, win_label",
+          optionAsm: {
+            "la t0, win_label": "la t0, win_label",
+            "li t0, 0x10050": "li t0, 0x10050",
+            "li t0, 0x100a0": "li t0, 0x100a0",
+            "mv t0, ra": "mv t0, ra",
+          },
         },
       ],
+      asmPrefix: "_start:\n    la t1, buf\n",
+      asmSuffix:
+        "    sw t0, 0(t1)\n" +
+        "    lw ra, 0(t1)\n" +
+        "    jalr x0, ra, 0\n" +
+        "win_label:\n" +
+        "    la a1, msg_win\n" +
+        "    li a2, 5\n" +
+        "    li a0, 1\n" +
+        "    li a7, 64\n" +
+        "    ecall\n" +
+        "    li a0, 0\n" +
+        "    li a7, 93\n" +
+        "    ecall\n" +
+        ".data\n" +
+        'msg_win: .ascii "WIN!\\n"\n' +
+        "buf: .space 4\n",
     },
   ],
 };
