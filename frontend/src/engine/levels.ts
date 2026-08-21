@@ -1668,6 +1668,11 @@ export const L2_5A: LevelSchema = {
         mode: "offset",
         savedS0Size: 4,
         savedRaSize: 4,
+        // A sliver of what's past ra, so "填滿 ra 就好、別再往上" has
+        // somewhere visible to mean "further" — matches the next step's
+        // real emulator check, which plants a sentinel one word past ra to
+        // tell "just right" apart from "overshot".
+        beyondSize: 4,
         fillLength: 36,
       },
     },
@@ -1706,6 +1711,10 @@ export const L2_5A: LevelSchema = {
         mode: "offset",
         savedS0Size: 4,
         savedRaSize: 4,
+        // Matches this step's own asmTemplate below: buf+40 is exactly the
+        // sentinel word the real run checks to tell "just right" (ra fully
+        // overwritten, nothing past it touched) apart from "overshot".
+        beyondSize: 4,
       },
       asmTemplate:
         "_start:\n" +
@@ -1951,17 +1960,59 @@ export const L2_BONUS: LevelSchema = {
     {
       widgetType: "observation",
       judge: { kind: "none" },
-      title: "自己編位址，小端序寫進 bytes",
+      title: "位址不是猜的，是照規則數出來的",
+      // Answerability fix for the original 2-step L2-Bonus (recorded in
+      // docs/design/answerability-audit-L2.md): it told the player to find
+      // win()'s address "from a disassembly or symbol table", but this
+      // platform has neither tool — there was no way to actually answer the
+      // question. This step replaces that with the real rule the assembler
+      // itself uses (BASE_ADDRESS + running byte count) plus a real symbol
+      // table for the exact skeleton the next step starts from, both
+      // verified by actually assembling that skeleton — not made-up numbers
+      // (see FreehandEditorWidget/levels.ts — the "la t0, win_label" trick
+      // L2-5b used isn't available here on purpose, this level is the one
+      // that keeps the raw-bytes hand-computation skill).
       prompt:
-        "沒有選單了，`win()` 的位址要自己從反組譯結果或符號表找出來。RISC-V 是 **little-endian**，一個 32-bit 位址（例如 `0x10074`）寫進記憶體時，最低位的 byte 放最前面：`74 00 01 00`，不是照著十六進位字面順序排。組語裡可以用 `.word 0x10074` 讓組譯器自動排好位元組順序，不用手動反轉。",
+        "這裡沒有位址選單了。但 `win_label` 的位址不是要你憑空猜，組譯器算位址的規則本身很單純，直接攤開：\n\n- 組譯起始位址（`BASE_ADDRESS`）固定是 `0x10000`\n- 大多數指令固定佔 4 bytes；但 `la` 這類需要完整位址的指令，會展開成兩道真指令（`lui` + `addi`），佔 8 bytes\n- 位址就是從 `0x10000` 開始，照每道指令實際佔的大小一路往下數\n\n下一步骨架裡 `win_label` 之前固定不動的三行：\n\n- `la t1, buf`：8 bytes，位址從 `0x10000` 走到 `0x10008`\n- `lw ra, 36(t1)`：4 bytes，走到 `0x1000c`\n- `jalr x0, ra, 0`：4 bytes，走到 `0x10010`\n\n所以 `win_label` 真正的位址是 `0x10010`。這是真的組譯這份骨架得到的數字，不是編的。組譯器算出的完整符號表：\n\n- `_start`：`0x10000`\n- `win_label`：`0x10010`\n- `flag_msg`：`0x10034`\n- `buf`：`0x10039`\n\nRISC-V 是 **little-endian**，32-bit 位址寫進記憶體時最低位的 byte 放最前面。組語裡用 `.word 0x10010` 讓組譯器自動排好位元組順序，不用手動反轉。",
     },
     {
       widgetType: "freehand-editor",
       judge: { kind: "emulator", expect: { stdoutContains: "flag" } },
       title: "拿掉所有輔助，自己組出完整 payload",
       prompt:
-        "跟 L2-5 同一支 binary，但拿掉所有輔助：\n- 沒有滑桿（自己找 offset）\n- 沒有位址選單（自己算/找 `win()` 位址）\n- 沒有排序輔助（自己組完整 raw payload bytes）\n\n完賽與否不影響 L2-5 → Boss 的銜接。",
-      starterCode: "# raw payload bytes, no scaffold\n",
+        "跟 L2-5 系列同一套 32-byte buffer ＋ 4-byte saved s0 ＋ 4-byte saved ra 的 offset 技巧，但這次自己動手，不用 `la`／標籤定址取巧——`win_label` 之前那三行程式碼別動（上一步的位址推導才會準），你只需要在 `buf:` 底下自己補滿 40 bytes 的 raw payload：\n\n- 前 32 bytes：隨便填滿 `buffer`\n- 接著 4 bytes：隨便的 `saved s0`（值不重要，長度要對）\n- 最後 4 bytes：`win_label` 的真實位址 `0x10010`，用 `.word 0x10010` 讓組譯器自動排好 little-endian\n\n組譯成功後，下面會直接顯示你目前寫進 `ra` 的真實數值，以及真的送進 rv32emu 跑出來的 exit code／stdout——寫錯了看得出蓋歪在哪，不用瞎猜。",
+      starterCode:
+        "_start:\n" +
+        "    la t1, buf\n" +
+        "    lw ra, 36(t1)\n" +
+        "    jalr x0, ra, 0\n" +
+        "win_label:\n" +
+        "    la a1, flag_msg\n" +
+        "    li a2, 5\n" +
+        "    li a0, 1\n" +
+        "    li a7, 64\n" +
+        "    ecall\n" +
+        "    li a0, 0\n" +
+        "    li a7, 93\n" +
+        "    ecall\n" +
+        ".data\n" +
+        'flag_msg: .ascii "flag\\n"\n' +
+        "\n" +
+        "# TODO: 自己補上 buf 的 40 bytes payload\n" +
+        "#   - 32 bytes：隨便填滿 buffer\n" +
+        "#   - 4 bytes：隨便的 saved s0（值不重要，長度要對）\n" +
+        "#   - 4 bytes：win_label 的真實位址（用 .word，讓組譯器自動排 little-endian）\n" +
+        "buf:\n",
+      // Preview of what buf+36 (the exact 4 bytes `lw ra, 36(t1)` loads)
+      // decodes to, read straight off the just-assembled bytes — see
+      // FreehandEditorWidget.tsx's readWatchedBytes for why this is a
+      // static byte read instead of a guest-side register probe.
+      memoryWatch: {
+        registerLabel: "ra（jalr 前 lw 進來的跳轉目標）",
+        label: "buf",
+        offset: 36,
+        size: 4,
+      },
     },
   ],
 };

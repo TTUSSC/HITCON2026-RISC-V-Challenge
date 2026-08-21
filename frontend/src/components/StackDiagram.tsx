@@ -6,6 +6,8 @@
 // matching levels.md's own diagram:
 //
 //   ┌─────────────┐  高位址
+//   │ 再往上一點   │  (beyondSize only — optional, see below)
+//   ├─────────────┤
 //   │ saved ra    │
 //   ├─────────────┤
 //   │ saved s0    │
@@ -21,11 +23,21 @@
 // "corrupted" (the overflow eating saved s0 / saved ra). In 'canary' mode,
 // a filled canary byte additionally flips the region into a "detected"
 // state (levels.md L3-1's "觸發偵測當掉" payoff).
+//
+// `beyondSize` (optional) renders one more region above saved ra —
+// L2-5a's practice step asks for the offset that overwrites ra *and no
+// further* (its real emulator check plants a sentinel one word past ra to
+// tell "just right" apart from "overshot"), but the diagram used to stop
+// exactly at ra's top edge, so there was nothing on screen to distinguish
+// "stopped here" from "kept going". A filled byte in this region gets the
+// same corrupted styling as an overwritten saved-ra byte, since spilling
+// into it is exactly the mistake it's there to make visible.
 
 import { TriangleAlert } from "lucide-react";
 import "./StackDiagram.css";
 
-export type StackRegionKind = "buffer" | "canary" | "savedS0" | "savedRa";
+export type StackRegionKind =
+  "buffer" | "canary" | "savedS0" | "savedRa" | "beyond";
 
 export interface StackDiagramProps {
   bufferSize: number;
@@ -33,6 +45,10 @@ export interface StackDiagramProps {
   canarySize?: number;
   savedS0Size: number;
   savedRaSize: number;
+  // Optional sliver of memory shown above saved ra — see file header.
+  // Absent (or 0) renders exactly as before, so existing callers (L3-1)
+  // are unaffected.
+  beyondSize?: number;
   fillLength: number;
   regionLabels?: Partial<Record<StackRegionKind, string>>;
 }
@@ -42,6 +58,7 @@ const DEFAULT_LABELS: Record<StackRegionKind, string> = {
   canary: "canary ← 沖到會被抓",
   savedS0: "saved s0 ← 可隨意填",
   savedRa: "saved ra ← 被劫持的目標",
+  beyond: "再往上一點 ← 沖過頭會蓋到這裡",
 };
 
 const BYTES_PER_ROW = 4;
@@ -104,8 +121,21 @@ function buildRegions(props: StackDiagramProps): Region[] {
     label: labels.savedRa,
     className: "stack-region-saved-ra",
   });
+  cursor += savedRaSize;
 
-  // Render high address (saved ra) first, low address (buffer) last.
+  const { beyondSize } = props;
+  if (beyondSize) {
+    regions.push({
+      kind: "beyond",
+      size: beyondSize,
+      start: cursor,
+      label: labels.beyond,
+      className: "stack-region-beyond",
+    });
+  }
+
+  // Render high address (saved ra, or beyond if present) first, low
+  // address (buffer) last.
   return regions.reverse();
 }
 

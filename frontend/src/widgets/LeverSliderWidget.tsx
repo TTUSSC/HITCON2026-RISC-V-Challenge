@@ -70,6 +70,7 @@ export const LeverSliderWidget: WidgetComponent<LeverSliderStep> = ({
           canarySize={schema.stackVisual.canarySize}
           savedS0Size={schema.stackVisual.savedS0Size}
           savedRaSize={schema.stackVisual.savedRaSize}
+          beyondSize={schema.stackVisual.beyondSize}
           fillLength={value}
         />
       )}

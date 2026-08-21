@@ -123,6 +123,10 @@
   }
 }
 
+.stack-region-beyond .stack-byte-cell {
+  opacity: 0.7;
+}
+
 .stack-region-canary[data-detected="true"] {
   background: color-mix(in srgb, var(--coral) 14%, transparent);
   animation: stack-region-flash 0.6s ease 2;

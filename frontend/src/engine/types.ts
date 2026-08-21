@@ -159,6 +159,10 @@ export interface ObservationStep extends StepBase {
     canarySize?: number;
     savedS0Size: number;
     savedRaSize: number;
+    // Optional sliver of memory shown above saved ra, so overshooting past
+    // ra has somewhere visible to land — see components/StackDiagram.tsx's
+    // file header.
+    beyondSize?: number;
     fillLength: number;
   };
 }
@@ -290,6 +294,9 @@ export interface LeverSliderStep extends StepBase {
     canarySize?: number; // only relevant when mode === 'canary'
     savedS0Size: number;
     savedRaSize: number;
+    // Optional sliver of memory shown above saved ra — see
+    // components/StackDiagram.tsx's file header.
+    beyondSize?: number;
   };
   // judge.kind 'emulator' only (L2-5a): a full self-contained assembly
   // program with a single "{{n}}" placeholder (see asmTemplate.ts's
@@ -324,6 +331,27 @@ export interface FreehandEditorStep extends StepBase {
   // plain text, UTF-8-encoded by the widget at submit time. Mirrors
   // DragOrderStep.files above.
   files?: Array<{ path: string; contents: string }>;
+  // Optional: after a successful assemble (no emulator run needed), show
+  // the `size` bytes the player's own source placed at `label + offset`,
+  // decoded little-endian — added for L2-Bonus so a raw-`.byte`/`.word`
+  // payload step can show "what you actually wrote into ra" using the same
+  // assembler that will run it, instead of asking the guest program to
+  // self-report (this ISA has no shift instructions, so a guest-side
+  // decimal/hex conversion of an arbitrary 32-bit value would need a
+  // subtraction loop that could take billions of iterations on a bad
+  // payload — a real hang risk; reading the bytes back out of the
+  // assembler's own output is exactly as truthful and has none of that
+  // risk, see FreehandEditorWidget.tsx). Purely additive — every other
+  // freehand-editor level (L2-4/L3-Bonus) omits it, so their rendering is
+  // unchanged.
+  memoryWatch?: {
+    // Human label for the panel, e.g. "ra（jalr 前 lw 進來的跳轉目標）".
+    registerLabel: string;
+    // Assembler label the offset is relative to, e.g. "buf".
+    label: string;
+    offset: number;
+    size: number; // bytes, little-endian, 1-4
+  };
 }
 
 export type LevelStep =

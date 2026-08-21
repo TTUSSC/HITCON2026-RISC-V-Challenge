@@ -54,6 +54,7 @@ export const ObservationWidget: WidgetComponent<ObservationStep> = ({
           canarySize={schema.stackVisual.canarySize}
           savedS0Size={schema.stackVisual.savedS0Size}
           savedRaSize={schema.stackVisual.savedRaSize}
+          beyondSize={schema.stackVisual.beyondSize}
           fillLength={schema.stackVisual.fillLength}
         />
       )}
