@@ -1256,13 +1256,55 @@ export const L2_2: LevelSchema = {
   id: "L2-2",
   title: "排出正確的 ORW 順序",
   onPass: { advance: "L2-3" },
+  // Rebuilt per docs/design/cogload-review-L2-0-to-3.md's L2-2 punch list —
+  // the old version had two separate density problems:
+  //   1. Step 1 (observation) crammed both data flows (open's fd -> read,
+  //      read's buf -> write) plus the ordering rule into one text-only
+  //      paragraph, with zero registerContext/memoryVisual to lean on. Now
+  //      split into two focused observation steps, each with its own visual:
+  //      a RegisterBank before/after transition for the fd handoff, then a
+  //      MemoryCells buffer for the read->write handoff, ending on the
+  //      one-line "open -> read -> write" rule only after both flows have
+  //      been shown, not before (level-design-principles.md's "先看到現象，
+  //      再命名規則").
+  //   2. Step 2 (drag-order) asked players to sort 9 near-identical
+  //      fragments — an operation-density problem distinct from the prompt
+  //      text itself. Collapsed to 3 whole-syscall blocks (open/read/write);
+  //      players only order the syscalls, not each syscall's internal
+  //      a7/args/ecall sequence. Each block's asm is exactly the
+  //      concatenation of the 9 fragments' asm it replaces (same
+  //      instructions, same order within the block), so the assembled
+  //      program — and the fd/buf handoff it depends on — is unchanged from
+  //      the previous version.
   steps: [
     {
       widgetType: "observation",
       judge: { kind: "none" },
-      title: "三個 syscall 接力：fd 會傳給下一個",
+      title: "open 之後，fd 進了 a0",
       prompt:
-        "`open(a7=1024, a0=path, a1=flags)` 執行完，回傳值（新開檔案的 `fd`）會放在 `a0` 裡——下一個 `read(a7=63, a0=fd, a1=buf, a2=len)` 就要用這個 `fd`，不是隨便寫死一個數字。同樣地，`write(a7=64, a0=fd, a1=buf, a2=len)` 印出的東西，就是 `read` 剛剛讀進 `buf` 的內容。**三個 syscall 是接力賽，順序錯了，後面拿到的值就是垃圾。**",
+        "`open` 執行完，回傳值會直接寫進 `a0`：那就是新開檔案的 `fd`。接下來 `read` 要用的就是這個值，不能自己編一個數字。",
+      registerContext: ["a0"],
+      registerLabels: { a0: "path" },
+      registerAfter: { a0: "fd" },
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "read 填 buf，write 印 buf",
+      prompt:
+        "`read` 執行完，檔案內容會出現在 `buf` 裡。接著 `write` 印出來的，就是同一塊 `buf`。順序固定是 `open → read → write`。",
+      memoryVisual: {
+        baseRegister: "a1",
+        baseValue: "buf",
+        cells: [
+          { offset: 0, value: "T", label: "buf" },
+          { offset: 1, value: "T" },
+          { offset: 2, value: "U" },
+          { offset: 3, value: "…" },
+        ],
+        bytesPerCell: 1,
+        highlightOffset: 0,
+      },
     },
     {
       widgetType: "drag-order",
@@ -1274,77 +1316,28 @@ export const L2_2: LevelSchema = {
       // syscall number), a correct order genuinely prints it.
       judge: { kind: "emulator", expect: { stdoutContains: "TTUSSC{demo}" } },
       title: "排出正確的 ORW 順序",
-      prompt:
-        "給正確但打散的 `open`／`read`／`write` 片段（用 L2-0 已預覽過的三個 syscall），拖曳排回順序。",
+      prompt: "把 `open`／`read`／`write` 三塊排成正確的接力順序。",
       items: [
         {
-          id: "open-a7",
-          label: "li a7, 1024   # open syscall number",
-          asm: "    li a7, 1024",
+          id: "open",
+          label:
+            "open：開啟檔案（a7=1024、a0=path 位址，執行 ecall，回傳的 fd 留在 a0）",
+          asm: "    li a7, 1024\n    la a0, path\n    ecall",
         },
         {
-          id: "open-a0",
-          label: "la a0, path    # 檔名位址",
-          asm: "    la a0, path",
+          id: "read",
+          label:
+            "read：讀進緩衝區（a7=63、沿用 a0 的 fd、a1=buf 位址、a2=13，執行 ecall，內容讀進 buf）",
+          asm: "    li a7, 63\n    la a1, buf\n    li a2, 13\n    ecall",
         },
         {
-          id: "open-ecall",
-          label: "ecall          # 執行 open",
-          // a0 <- fd on return.
-          asm: "    ecall",
-        },
-        {
-          id: "read-a7",
-          label: "li a7, 63     # read syscall number",
-          asm: "    li a7, 63",
-        },
-        {
-          id: "read-args",
-          // Split out from the old combined "read-a7" item (see
-          // answerability-audit-L2.md's L2-2 disclosure nit) — the label
-          // used to only say "li a7, 63" while the asm quietly also set
-          // a1/a2. Now each item's label matches exactly what its asm does.
-          // buf/len (a1/a2) were already taught as read()'s signature back
-          // in L2-0, this item just applies them.
-          label: "la a1, buf ／ li a2, 13   # read 的 a1/a2：buf 位址、長度",
-          asm: "    la a1, buf\n    li a2, 13",
-        },
-        {
-          id: "read-ecall",
-          label: "ecall          # 執行 read",
-          // a0 <- bytes read on return.
-          asm: "    ecall",
-        },
-        {
-          id: "write-a7",
-          label: "li a7, 64     # write syscall number",
-          asm: "    li a7, 64",
-        },
-        {
-          id: "write-a0",
-          // Split out from the old combined "write-a7" item — same fix as
-          // read-args above: a0 needs to switch from "the opened file's fd"
-          // to stdout (1), and that's now its own honestly-labeled item.
-          label: "li a0, 1      # fd 換成 1（stdout），才是印到畫面上",
-          asm: "    li a0, 1",
-        },
-        {
-          id: "write-ecall",
-          label: "ecall          # 執行 write",
-          asm: "    ecall",
+          id: "write",
+          label:
+            "write：印出結果（a7=64、a0 改成 1＝stdout、沿用 a1/a2 的 buf 位址與長度，執行 ecall，印出 buf 內容）",
+          asm: "    li a7, 64\n    li a0, 1\n    ecall",
         },
       ],
-      correctOrder: [
-        "open-a7",
-        "open-a0",
-        "open-ecall",
-        "read-a7",
-        "read-args",
-        "read-ecall",
-        "write-a7",
-        "write-a0",
-        "write-ecall",
-      ],
+      correctOrder: ["open", "read", "write"],
       asmPrefix: "_start:\n",
       asmSuffix:
         "\n    li a0, 0\n" +
