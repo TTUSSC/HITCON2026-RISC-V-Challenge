@@ -1740,15 +1740,21 @@ export const L2_5A: LevelSchema = {
         "    li a5, 0xcafebabe\n" +
         "    bne a1, a5, too_far\n" +
         "    la a1, msg_right\n" +
-        "    li a2, 10\n" +
+        // rv32emu's stdout capture only flushes a completed line (one that
+        // actually ends in "\n" — see loadEmulator.ts's file header and
+        // registerProbe.ts's identical gotcha); each message below carries
+        // its own trailing "\n" byte (and a2 counts it) so judge.expect's
+        // stdoutContains check has something real to match against, not a
+        // line stuck in an unflushed buffer.
+        "    li a2, 11\n" +
         "    jal x0, do_print\n" +
         "too_short:\n" +
         "    la a1, msg_short\n" +
-        "    li a2, 10\n" +
+        "    li a2, 11\n" +
         "    jal x0, do_print\n" +
         "too_far:\n" +
         "    la a1, msg_far\n" +
-        "    li a2, 8\n" +
+        "    li a2, 9\n" +
         "do_print:\n" +
         "    li a0, 1\n" +
         "    li a7, 64\n" +
@@ -1758,9 +1764,9 @@ export const L2_5A: LevelSchema = {
         "    ecall\n" +
         ".data\n" +
         "buf: .space 80\n" +
-        'msg_right: .ascii "JUST_RIGHT"\n' +
-        'msg_short: .ascii "TOO_SHORT!"\n' +
-        'msg_far: .ascii "TOO_FAR!"\n',
+        'msg_right: .ascii "JUST_RIGHT\\n"\n' +
+        'msg_short: .ascii "TOO_SHORT!\\n"\n' +
+        'msg_far: .ascii "TOO_FAR!\\n"\n',
     },
   ],
 };
