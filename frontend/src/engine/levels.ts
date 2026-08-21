@@ -708,20 +708,67 @@ export const L1_2: LevelSchema = {
   id: "L1-2",
   title: "syscall number 放哪個暫存器？",
   onPass: { advance: "L1-3", reward: "hitcon-badge" },
+  // 5-step sequence per docs/design/cogload-review-L1.md's L1-2 proposal +
+  // the repo owner's two explicit complaints:
+  //   1. write's own purpose/signature must be established BEFORE any
+  //      register mechanics — the old version opened directly with "a7 放
+  //      syscall 編號", skipping past what write even does. fd/buf/len stay
+  //      at the concept level here ("寫到哪/印什麼/多長"); the repo owner
+  //      flagged that fd's concrete values (0/1/2) and buf's real memory
+  //      address are L1-3/L2-1 content, not L1-2's.
+  //   2. the graded fill-blank's RegisterBank used to show a0/a1/a7/ra with
+  //      3 permanently-empty decoy boxes just to align with the option
+  //      pills — same bug already fixed on L1-3 (see that level's comment).
+  //      asmLines already echoes the picked register inline via
+  //      `li {{a7}}, ...`, so no RegisterBank is attached to either
+  //      fill-blank step below.
   steps: [
     {
       widgetType: "observation",
       judge: { kind: "none" },
-      title: "syscall 也是一種函式呼叫",
+      title: "write：把資料印出來",
       prompt:
-        "syscall（跟系統要服務）沒有另一套規則，直接借用 L1-1 剛認識的 `a0`–`a7`：**`a7` 放「你想要哪個服務」的編號**，`a0`–`a6` 當這個服務的參數。想印字（`write`）就要告訴系統：\n- 要寫到哪個檔案（`fd`）\n- 字串在哪裡（`buf`）\n- 多長（`len`）\n\n這三個放進 `a0`/`a1`/`a2`，而 `a7` 先放 `write` 這個服務本身的編號。",
+        "`write` 是系統提供的一個服務，作用是把資料印出來。跟平常呼叫函式一樣，它也需要幾項資訊才能動作：\n- 寫到哪裡（`fd`）\n- 要印的內容是什麼（`buf`）\n- 印多長（`len`）\n\n概念上就像 C 語言裡的 `write(fd, buf, len)`：一次帶三個引數。呼叫 syscall 其實就是 L1-1 那套呼叫慣例，只是這次呼叫的對象換成系統本身。",
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "套用剛學過的規律",
+      prompt:
+        "L1-1 教過：引數依序放進 `a0`、`a1`、`a2`……呼叫系統的服務一樣適用這套規律，`write` 的三項資訊照順序放：",
+      registerContext: ["a0", "a1", "a2"],
+      registerLabels: {
+        a0: "fd",
+        a1: "buf",
+        a2: "len",
+      },
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "還要多告訴系統一件事：你要哪個服務",
+      prompt:
+        "呼叫一般函式時，程式早就寫死要跳去哪裡；但 syscall 呼叫的對象是系統，系統得先知道「你想要哪個服務」。這靠多一個暫存器：**`a7` 放服務的編號**，`write` 的編號是 `64`。設好 `a0`–`a2`、`a7` 之後，執行 `ecall` 這個指令才會真的觸發呼叫。",
       registerContext: ["a0", "a1", "a2", "a7"],
       registerLabels: {
-        a0: "fd（寫到哪）",
-        a1: "buf（字串位址）",
-        a2: "len（長度）",
-        a7: "syscall 編號",
+        a0: "fd",
+        a1: "buf",
+        a2: "len",
+        a7: "64",
       },
+    },
+    {
+      widgetType: "fill-blank",
+      // Static value recall, judge:"direct" (no emulator run needed — this
+      // step tests the NUMBER, not where it goes) — splits the two facts
+      // the old single fill-blank conflated (level-review-L1.md's exact
+      // complaint): "syscall number goes in a7" (register, tested by the
+      // next step) vs "write's number is 64" (value, tested here).
+      judge: { kind: "direct" },
+      title: "write 的服務編號是多少？",
+      prompt: "上一步剛看過：`write` 這個服務的編號是多少？",
+      asmLines: ["li a7, {{num}}   # write 的 syscall number"],
+      blanks: [{ id: "num", answer: "64", options: ["1", "10", "64", "128"] }],
     },
     {
       widgetType: "fill-blank",
@@ -733,16 +780,15 @@ export const L1_2: LevelSchema = {
       // (kept only in the displayed asmLines for narrative continuity, same
       // asymmetry L0-2 already uses) so wrong picks don't trigger a real
       // syscall with unset a0/a1/a2 — checkRegister only cares whether a7
-      // actually ended up holding 64.
+      // actually ended up holding 64. Last step of the level, so this is
+      // what fires onPass's hitcon-badge reward.
       judge: { kind: "emulator", expect: { registers: { a7: 64 } } },
       setupAsmTemplate: "li {{a7}}, 64",
       checkRegister: "a7",
       title: "syscall number 放哪個暫存器？",
-      prompt:
-        "你想跟系統要哪個服務？呼叫 `read`/`write`/`exit` 前，系統呼叫編號要放進哪個暫存器？（挑 `write` 的 syscall 編號）",
+      prompt: "服務編號是 `64`，這個編號本身要放進哪個暫存器？",
       asmLines: ["li {{a7}}, 64   # write 的 syscall number", "ecall"],
       blanks: [{ id: "a7", answer: "a7", options: ["a0", "a1", "a7", "ra"] }],
-      registerContext: ["a0", "a1", "a7", "ra"],
     },
   ],
 };
