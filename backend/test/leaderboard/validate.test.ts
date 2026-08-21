@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  FALLBACK_DISPLAY_NAME,
   MAX_ATTEMPTS,
   MAX_DISPLAY_NAME_LENGTH,
   clampAttempts,
@@ -26,8 +25,17 @@ describe("sanitizeDisplayName", () => {
     expect(sanitizeDisplayName(long)).toHaveLength(MAX_DISPLAY_NAME_LENGTH);
   });
 
-  it("falls back rather than rejecting an empty name", () => {
-    expect(sanitizeDisplayName("   ")).toBe(FALLBACK_DISPLAY_NAME);
+  it("returns an empty string for a blank name, leaving the caller to reject", () => {
+    expect(sanitizeDisplayName("   ")).toBe("");
+  });
+
+  it("counts the cap in code points so an emoji is not cut in half", () => {
+    // 30 astral-plane characters: a UTF-16 slice(0, 24) would land mid-surrogate
+    // and produce a lone surrogate, which is not valid UTF-8.
+    const name = "🙂".repeat(30);
+    const result = sanitizeDisplayName(name);
+    expect([...result]).toHaveLength(MAX_DISPLAY_NAME_LENGTH);
+    expect(result).toBe("🙂".repeat(MAX_DISPLAY_NAME_LENGTH));
   });
 });
 
@@ -96,12 +104,16 @@ describe("parseProgressBody", () => {
     expect(parseProgressBody("nope").ok).toBe(false);
   });
 
-  it("falls back instead of rejecting when the display name is missing", () => {
+  it("rejects a missing display name — there is no anonymous player", () => {
     const { displayName, ...withoutName } = valid;
     void displayName;
     const result = parseProgressBody(withoutName);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value.displayName).toBe(FALLBACK_DISPLAY_NAME);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("displayName");
+  });
+
+  it("rejects a whitespace-only display name", () => {
+    expect(parseProgressBody({ ...valid, displayName: "   " }).ok).toBe(false);
   });
 });

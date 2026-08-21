@@ -5,7 +5,6 @@ export const ENTRY_POINTS = ["L0", "L1", "L2"] as const;
 export type EntryPoint = (typeof ENTRY_POINTS)[number];
 
 export const MAX_DISPLAY_NAME_LENGTH = 24;
-export const FALLBACK_DISPLAY_NAME = "匿名玩家";
 export const MAX_ATTEMPTS = 999;
 
 // profileId arrives straight from the browser's localStorage. It is usually a
@@ -16,11 +15,14 @@ const PROFILE_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
 // Trim and cap only. This is NOT content moderation — that is deliberately out
 // of scope (see the spec's 不做 table). It exists so an arbitrarily long string
-// cannot reach the database. An empty name falls back instead of rejecting:
-// a strange nickname must not cost the player their leaderboard entry.
+// cannot reach the database. Returns "" for a blank name; the caller rejects
+// that, because there is no anonymous-player concept in this system.
+//
+// Slicing goes through [...raw] so the cap counts code points, not UTF-16 code
+// units — a plain .slice(0, 24) can cut an emoji in half and leave a lone
+// surrogate, which is not valid UTF-8 and would fail on the way to Postgres.
 export function sanitizeDisplayName(raw: string): string {
-  const trimmed = raw.trim().slice(0, MAX_DISPLAY_NAME_LENGTH).trim();
-  return trimmed.length > 0 ? trimmed : FALLBACK_DISPLAY_NAME;
+  return [...raw.trim()].slice(0, MAX_DISPLAY_NAME_LENGTH).join("").trim();
 }
 
 export function clampAttempts(raw: number | undefined): number {
@@ -68,11 +70,19 @@ export function parseProgressBody(body: unknown): ParseResult {
     return { ok: false, error: `unknown levelId "${parsed.data.levelId}"` };
   }
 
+  // No nickname, no leaderboard entry. The client already declines to upload in
+  // this case (see leaderboardClient.ts), so reaching here means something
+  // bypassed it — refuse rather than inventing a placeholder name.
+  const displayName = sanitizeDisplayName(parsed.data.displayName ?? "");
+  if (displayName.length === 0) {
+    return { ok: false, error: "displayName must not be empty" };
+  }
+
   return {
     ok: true,
     value: {
       profileId: parsed.data.profileId,
-      displayName: sanitizeDisplayName(parsed.data.displayName ?? ""),
+      displayName,
       entryPoint: parsed.data.entryPoint,
       levelId: parsed.data.levelId,
       depth,
