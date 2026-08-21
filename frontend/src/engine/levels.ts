@@ -1510,13 +1510,107 @@ export const L2_4: LevelSchema = {
   id: "L2-4",
   title: "填出完整 ORW 的 syscall",
   onPass: { advance: "L2-5a" },
+  // Rebuilt per docs/design/cogload-review-L2.md's L2-4 punch list — flagged
+  // as the branch's sharpest pacing spike: the old 2-step version jumped
+  // straight from picking *one* syscall number (L2-3) to authoring all
+  // ~11 read/write/exit TODOs in a bare freehand textarea in one shot, with
+  // zero intermediate feedback point. Fix follows the review's own
+  // classification note ("step-splitting + constrained fill-blanks are
+  // content work; freehand should be reserved for the final integration
+  // step, not the first point every dependency is tested together") —
+  // no new widget/UI needed, just reusing fill-blank per block before the
+  // freehand-editor milestone stays a single genuine end-to-end run instead
+  // of being fragmented into three separate freehand widgets (which would
+  // lose the "you just assembled the whole thing yourself" payoff).
+  //
+  // Also fixes a dishonesty bug the review caught: the old observation step
+  // claimed the `mv s1, a0` fd-preservation pattern was "L2-2／L2-3 用過"
+  // — checked against the live content, that's false. L2-2's read/write
+  // never preserves fd in s1 (write just overwrites a0 with the stdout fd
+  // directly; read's a0 is left holding open's return value with no
+  // explicit mv), and L2-3 never touches fd at all. s1 is genuinely new
+  // here, so it's now introduced as new instead of a false "you've seen
+  // this" callback.
+  //
+  // 6-step sequence: recap what's given + honestly introduce s1 (worked
+  // example, judge:none) -> practice read's block alone (fill-blank,
+  // direct judge) -> practice write's block alone, including the "a0
+  // switches from fd to stdout" contrast (fill-blank, direct judge) ->
+  // practice exit's block alone (fill-blank, direct judge) -> a short
+  // "now type it yourself" transition step so the freehand textarea isn't
+  // the first time the learner sees what free-typing looks like -> the
+  // real freehand-editor integration run (unchanged skeleton/scope: only
+  // syscall numbers + argument registers are asked for, `.data`/`_start:`
+  // stay untouched, same as before).
   steps: [
     {
       widgetType: "observation",
       judge: { kind: "none" },
       title: "沒教過的語法先幫你寫好，重點才是你要填的",
       prompt:
-        '這關不是要你從零刻出整支程式——`.data` 段、字串宣告、`_start:` 標籤這些語法課程從來沒教過，不是這個技能樹的重點，所以已經幫你寫好：\n- `.data` 段放好 `path: .asciz "flag.txt"` 跟 `buf: .space 16`\n- `_start:` 標籤\n- `open` 這個新 syscall 已經當範例整段寫完，包含拿到 `fd` 後 `mv s1, a0` 存起來（L2-2／L2-3 用過的保護寫法，避免下一個 syscall 把 `a0` 蓋掉）\n\n真正要你自己寫的，是 `read`／`write`／`exit` 各自的 `li a7, N`（syscall 編號）跟參數暫存器（`a0`／`a1`／`a2`）——這才是「syscall + 參數準備」這個技能真正在練的部分。起始碼裡每個要填的地方都有 `# TODO` 註解標好位置。',
+        '這關不是要你從零刻出整支程式——`.data` 段、字串宣告、`_start:` 標籤這些語法課程從來沒教過，不是這個技能樹的重點，所以已經幫你寫好：\n- `.data` 段放好 `path: .asciz "flag.txt"` 跟 `buf: .space 16`\n- `_start:` 標籤\n- `open` 這個新 syscall 已經當範例整段寫完\n\n這裡第一次真的需要保護 `fd`：`open` 把 `fd` 放進 `a0`，但接下來 `read` 執行完，系統會把 `a0` 換成讀到的 byte 數——`a0` 裡原本的 `fd` 就沒了。所以 `open` 一拿到 `fd`，起始碼馬上用 `mv s1, a0` 存一份副本，之後要用 `fd` 的地方就改讀 `s1`。\n\n真正要你自己寫的，是 `read`／`write`／`exit` 各自的 `li a7, N`（syscall 編號）跟參數暫存器——這才是「syscall + 參數準備」這個技能真正在練的部分。接下來會先分開練 `read`、`write`、`exit` 三小段，每段選對就過，最後再把整支程式自己打一次、真的組譯執行。',
+    },
+    {
+      widgetType: "fill-blank",
+      judge: { kind: "direct" },
+      title: "先只練 read 這一段",
+      prompt:
+        "`read` 要用剛剛存好的 `fd`，讀進 `buf`。四格都要對：syscall 編號、`fd` 從哪個暫存器拿、讀進哪個標籤、讀多少長度。",
+      asmLines: [
+        "li a7, {{num}}        # syscall 編號",
+        "mv a0, {{fd}}          # fd 從哪個暫存器拿回來",
+        "la a1, {{buf}}          # 讀進哪個緩衝區",
+        "li a2, {{len}}          # 長度（flag.txt 內容是 13 bytes，含換行）",
+        "ecall",
+      ],
+      blanks: [
+        { id: "num", answer: "63", options: ["63", "64", "1024", "93"] },
+        { id: "fd", answer: "s1", options: ["s1", "a1", "a2"] },
+        { id: "buf", answer: "buf", options: ["buf", "path"] },
+        { id: "len", answer: "13", options: ["13", "16", "2"] },
+      ],
+    },
+    {
+      widgetType: "fill-blank",
+      judge: { kind: "direct" },
+      title: "換 write 這一段",
+      prompt:
+        "`write` 印到螢幕，不是印回檔案——`a0` 這格不再是 `fd`，要換成 `1`（stdout）。其他三格套用同一組緩衝區跟長度。",
+      asmLines: [
+        "li a7, {{num}}        # syscall 編號",
+        "li a0, {{fd}}          # 印到哪裡（不是檔案的 fd 了）",
+        "la a1, {{buf}}          # 印哪個緩衝區",
+        "li a2, {{len}}          # 長度",
+        "ecall",
+      ],
+      blanks: [
+        { id: "num", answer: "64", options: ["64", "63", "1024", "93"] },
+        { id: "fd", answer: "1", options: ["1", "0", "s1"] },
+        { id: "buf", answer: "buf", options: ["buf", "path"] },
+        { id: "len", answer: "13", options: ["13", "16", "2"] },
+      ],
+    },
+    {
+      widgetType: "fill-blank",
+      judge: { kind: "direct" },
+      title: "最後練 exit 這一段",
+      prompt: "程式結束前的最後一段，兩格都要對：syscall 編號跟結束碼。",
+      asmLines: [
+        "li a7, {{num}}        # syscall 編號",
+        "li a0, {{code}}        # 結束碼",
+        "ecall",
+      ],
+      blanks: [
+        { id: "num", answer: "93", options: ["93", "64", "63", "1024"] },
+        { id: "code", answer: "0", options: ["0", "1", "93"] },
+      ],
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "接下來換你自己打字",
+      prompt:
+        "剛剛三段選對的內容，現在換你自己打進一支完整的程式碼裡，真的組譯、真的在 emulator 上跑一次。內容跟你剛剛選的一樣，只是這次沒有選項可以點——`.data`／`_start:`／`open` 這些骨架還是幫你寫好，你只要照 `# TODO` 註解把 `read`／`write`／`exit` 補上去。打錯語法會直接看到組譯器的錯誤訊息，照著改就好。",
     },
     {
       widgetType: "freehand-editor",
