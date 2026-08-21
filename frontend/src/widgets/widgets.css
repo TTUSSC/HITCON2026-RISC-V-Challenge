@@ -678,6 +678,79 @@
   margin: -8px 0 16px;
 }
 
+/* Static preview of schema.memoryWatch (see types.ts's FreehandEditorStep
+   doc comment) — shows what the player's own just-assembled bytes placed at
+   the watched label+offset, so "did I write the right thing" is answerable
+   before even pressing Run's actual emulator round trip. */
+.freehand-editor-watch {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  margin: -8px 0 16px;
+}
+
+.freehand-editor-watch-label {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--sky-deep);
+}
+
+.freehand-editor-watch-value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+/* Real post-run state (exit code + stdout), shown for every run regardless
+   of pass/fail — see the widget file header's "Execution feedback" note. */
+.freehand-editor-result {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+}
+
+.freehand-editor-result-title {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.freehand-editor-result-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.freehand-editor-result-key {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--sky-deep);
+  flex-shrink: 0;
+}
+
+.freehand-editor-result-value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.freehand-editor-result-stdout {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  color: var(--text);
+  margin: 0;
+}
+
 /* stub placeholder (widgets not yet implemented) */
 .widget-stub .stub-notice {
   font-family: var(--font-mono);
