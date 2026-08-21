@@ -401,6 +401,14 @@ export interface SessionProgress {
   // entry pick can't silently overwrite an already-created profile.
   onboarded: boolean;
   entryPoint: "L0" | "L1" | "L2";
+  // Most recent level entered (see sessionStore.ts's enterLevel), regardless
+  // of pass state — used by MapPage/PathMap to scroll "/path" back to where
+  // the player actually left off, not just their furthest overall progress.
+  // A player who goes back to replay an already-passed level and then exits
+  // should land near that level again, not get yanked forward to their
+  // frontier (the previous behavior, flagged as a real bug by the repo
+  // owner). Null only before the very first level is ever entered.
+  lastVisitedLevelId: string | null;
   events: Array<{
     levelId: string;
     enteredAt: number;

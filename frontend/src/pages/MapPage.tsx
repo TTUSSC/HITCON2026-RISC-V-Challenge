@@ -41,6 +41,7 @@ export function MapPage() {
   const navigate = useNavigate();
   const entryPoint = useSessionStore((s) => s.entryPoint);
   const events = useSessionStore((s) => s.events);
+  const lastVisitedLevelId = useSessionStore((s) => s.lastVisitedLevelId);
 
   const passedIds = new Set(
     events.filter((e) => e.passedAt !== undefined).map((e) => e.levelId),
@@ -70,6 +71,19 @@ export function MapPage() {
     enteredBranchKeys.has(key),
   );
 
+  // "/path" should scroll back to wherever the player actually left off, not
+  // always their furthest overall progress — replaying an old, already-
+  // passed level and exiting used to yank the view forward to the frontier
+  // node instead (repo owner's exact bug report). The level right after
+  // lastVisitedLevelId is the scroll target; PathMap only acts on it if
+  // that id is actually one of its own branch's nodes, so this naturally
+  // does nothing for branches that aren't where the player just was.
+  const lastVisitedIndex = lastVisitedLevelId
+    ? levels.findIndex((l) => l.id === lastVisitedLevelId)
+    : -1;
+  const scrollTargetLevelId =
+    lastVisitedIndex >= 0 ? levels[lastVisitedIndex + 1]?.id : undefined;
+
   return (
     <div className="map-page">
       {visibleBranches.map((key) => (
@@ -78,6 +92,7 @@ export function MapPage() {
           <PathMap
             levelIds={[...branchLevelIds[key]]}
             rewardLevelIds={rewardLevelIds}
+            scrollTargetLevelId={scrollTargetLevelId}
             onSelectLevel={(levelId) => navigate(`/level/${levelId}`)}
           />
         </section>

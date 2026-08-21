@@ -29,6 +29,16 @@ export interface PathMapProps {
    * from the plain checkmark every other passed node gets.
    */
   rewardLevelIds?: Set<string>;
+  /**
+   * Level id to scroll to instead of the "current" (furthest-unpassed)
+   * node — the level right after wherever the player last visited, so
+   * replaying an old already-passed level and exiting scrolls back near
+   * there instead of jumping forward to the player's overall frontier
+   * (see MapPage.tsx). Only takes effect if this id is actually one of
+   * this branch's `levelIds`; otherwise falls back to the "current" node
+   * exactly as before.
+   */
+  scrollTargetLevelId?: string;
 }
 
 type NodeState = "done" | "current" | "locked";
@@ -38,6 +48,7 @@ export function PathMap({
   captions,
   onSelectLevel,
   rewardLevelIds,
+  scrollTargetLevelId,
 }: PathMapProps) {
   const events = useSessionStore((s) => s.events);
   const passedIds = new Set(
@@ -56,30 +67,51 @@ export function PathMap({
     return { id, state: "locked" };
   });
 
-  // Auto-scroll the "current" node (whichever the player would tap next)
-  // into view on mount — with multiple branch sections now stacked on the
-  // map (see MapPage.tsx's cross-branch-visibility fix), a returning player
-  // could otherwise land looking at old completed nodes from an earlier
-  // branch instead of their actual position. Only the branch that actually
-  // contains a "current" node scrolls (earlier branches are fully passed,
-  // so they have none and this is a no-op there). `smooth` per the repo
-  // owner's explicit request; falls back to instant under
-  // prefers-reduced-motion (matchMedia, not framer-motion's
+  // Auto-scroll into view on mount — with multiple branch sections now
+  // stacked on the map (see MapPage.tsx's cross-branch-visibility fix),
+  // MapPage renders one PathMap instance PER visible branch, and every one
+  // of them independently runs this effect on mount. That used to be the
+  // actual bug behind "replaying an old level still scrolls to the
+  // frontier": scrollTargetLevelId only ever belongs to ONE branch, but
+  // every OTHER branch's instance (frontier branch included, since it's
+  // usually not fully passed and so still has a real "current" node) fell
+  // back to scrolling to ITS OWN current node — and since it renders later
+  // in BRANCH_ORDER, its scrollIntoView call ran after the correct one and
+  // won. Fix: once a scrollTargetLevelId exists at all, ONLY the branch
+  // that actually contains it may scroll — every other branch does nothing,
+  // instead of each independently falling back to its own current node.
+  // The old "fall back to current" behavior only applies when
+  // scrollTargetLevelId itself is undefined (a fresh session with no
+  // last-visited level yet, or the player's last-visited level was the
+  // very last one in the whole game) — in that case only one branch has a
+  // node in "current" state to begin with, so there's nothing to conflict
+  // with. `smooth` per the repo owner's explicit request; falls back to
+  // instant under prefers-reduced-motion (matchMedia, not framer-motion's
   // useReducedMotion — this is a plain scrollIntoView call, no motion
   // component involved).
   const currentNodeId = nodes.find((n) => n.state === "current")?.id;
+  const hasScrollTargetInBranch =
+    scrollTargetLevelId !== undefined &&
+    nodes.some((n) => n.id === scrollTargetLevelId);
   const currentNodeRef = useRef<HTMLButtonElement | null>(null);
+  const scrollTargetRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
-    currentNodeRef.current?.scrollIntoView({
+    const target =
+      scrollTargetLevelId !== undefined
+        ? hasScrollTargetInBranch
+          ? scrollTargetRef.current
+          : null
+        : currentNodeRef.current;
+    target?.scrollIntoView({
       block: "center",
       behavior: prefersReducedMotion ? "auto" : "smooth",
     });
-    // Only re-run if which node is "current" actually changes (e.g. after
-    // passing a level and coming back), not on every unrelated re-render.
-  }, [currentNodeId]);
+    // Re-run when either candidate target changes (e.g. after passing a
+    // level, or after visiting a different level and coming back).
+  }, [currentNodeId, hasScrollTargetInBranch, scrollTargetLevelId]);
 
   // Tracks each node's state as of the *previous* render so a locked ->
   // current/done transition (a level just got passed and the player landed
@@ -153,7 +185,13 @@ export function PathMap({
             )}
             <button
               type="button"
-              ref={node.state === "current" ? currentNodeRef : undefined}
+              ref={
+                node.id === scrollTargetLevelId
+                  ? scrollTargetRef
+                  : node.state === "current"
+                    ? currentNodeRef
+                    : undefined
+              }
               className={`node ${node.state}`}
               disabled={node.state === "locked"}
               data-level-id={node.id}

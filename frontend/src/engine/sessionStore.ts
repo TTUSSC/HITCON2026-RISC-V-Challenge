@@ -47,6 +47,7 @@ export const useSessionStore = create<SessionStore>()(
       displayName: "",
       onboarded: false,
       entryPoint: "L0",
+      lastVisitedLevelId: null,
       events: [],
       rewards: [],
 
@@ -59,12 +60,14 @@ export const useSessionStore = create<SessionStore>()(
           const existing = state.events.find((e) => e.levelId === levelId);
           if (existing) {
             return {
+              lastVisitedLevelId: levelId,
               events: state.events.map((e) =>
                 e.levelId === levelId ? { ...e, attempts: e.attempts + 1 } : e,
               ),
             };
           }
           return {
+            lastVisitedLevelId: levelId,
             events: [
               ...state.events,
               { levelId, enteredAt: Date.now(), attempts: 1 },
@@ -101,7 +104,8 @@ export const useSessionStore = create<SessionStore>()(
           rewards: [...state.rewards, { kind, grantedAt: Date.now(), levelId }],
         })),
 
-      resetProgress: () => set({ events: [], rewards: [] }),
+      resetProgress: () =>
+        set({ lastVisitedLevelId: null, events: [], rewards: [] }),
 
       deleteProfile: () =>
         set({
@@ -109,6 +113,7 @@ export const useSessionStore = create<SessionStore>()(
           displayName: "",
           onboarded: false,
           entryPoint: "L0",
+          lastVisitedLevelId: null,
           events: [],
           rewards: [],
         }),
