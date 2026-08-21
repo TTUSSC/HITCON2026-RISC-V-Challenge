@@ -1779,9 +1779,21 @@ export const L2_5B: LevelSchema = {
     {
       widgetType: "observation",
       judge: { kind: "none" },
-      title: "位址是編出來就固定的，但不用自己猜",
+      title: "位址不是猜的，是照規則數出來的",
+      // Direction fix after repo-owner review: an earlier draft of this step
+      // taught `la t0, win_label` as "the" way to get win()'s address. That's
+      // backwards — `la`/label references are assembler-time syntax sugar
+      // that doesn't exist once code is compiled; a real attacker facing a
+      // built binary has no source, no labels, only raw bytes, and has to
+      // read the real numeric address off a tool (objdump/gdb/disassembler)
+      // and hardcode that number into the payload. This step now teaches the
+      // *rule* the assembler itself uses to place win_label (same rule
+      // L2-Bonus's step 1 teaches later), hand-counted for this level's own
+      // fixed skeleton and verified by actually assembling it — real
+      // assemble() call, not a guessed number: win_label really does land at
+      // 0x1001c here.
       prompt:
-        "`win()` 是這支 binary 裡本來就存在、但正常流程永遠不會被呼叫到的一段程式碼（例如印出 flag 再 exit）。它跟其他函式一樣，編譯完就有一個**固定的記憶體位址**——蓋掉 `saved ra` 時，只要把這個位址填進去，函式 `ret` 的時候就會跳過去執行，而不是跳回原本呼叫它的地方。\n\n跟 L2-1 的 `la a1, msg` 一樣，組譯器會幫每個標籤（包含函式）算好真實位址。這裡 `win()` 對應的標籤是 `win_label`：`la t0, win_label` 會把它真正的位址取出來放進 `t0`，完全不用自己猜或查十六進位數字。",
+        "`win()` 是這支 binary 裡本來就存在、但正常流程永遠不會被呼叫到的一段程式碼（例如印出 flag 再 exit）。它跟其他函式一樣，編譯完就有一個**固定的記憶體位址**——蓋掉 `saved ra` 時，只要把這個位址填進去，函式 `ret` 的時候就會跳過去執行，而不是跳回原本呼叫它的地方。\n\n但這個位址不是靠 `la t0, win_label` 這種標籤語法拿到的——`la` 是**組譯期**才存在的語法糖，編出來的 binary 裡根本沒有標籤這種東西。真實世界打 pwn 的時候，你手上只有編好的 binary，沒有原始碼、沒有標籤可以引用，只能用 `objdump`／`gdb`／反組譯器之類的工具，直接讀出真實的數字位址，再把那個數字寫進 payload。\n\n組譯器算位址的規則本身很單純：\n\n- 組譯起始位址（`BASE_ADDRESS`）固定是 `0x10000`\n- 大多數指令固定佔 4 bytes；但 `la`，或立即值超過 12-bit 有號範圍（大約 -2048 ~ 2047 之外）的 `li`，會展開成兩道真指令（`lui`+`addi`），佔 8 bytes\n- 位址就是從 `0x10000` 開始，照每道指令實際佔的大小一路往下數\n\n下一步骨架裡 `win_label` 之前固定不動的幾行：\n\n- `la t1, buf`：8 bytes，位址從 `0x10000` 走到 `0x10008`\n- 待填的那一行（把 `win()` 位址放進 `t0`）：不管你選哪個數字，都遠超過 12-bit 有號範圍，一定展開成 8 bytes，走到 `0x10010`\n- `sw t0, 0(t1)`：4 bytes，走到 `0x10014`\n- `lw ra, 0(t1)`：4 bytes，走到 `0x10018`\n- `jalr x0, ra, 0`：4 bytes，走到 `0x1001c`\n\n所以 `win_label` 真正的位址是 `0x1001c`。這是真的組譯這份骨架得到的數字，不是編的。組譯器算出的完整符號表：\n\n- `_start`：`0x10000`\n- `win_label`：`0x1001c`\n- `msg_win`：`0x10040`\n- `buf`：`0x10045`\n\n下一步你要選的，就是 `0x1001c` 這個數字本身——不是標籤，不是指令，是攻擊者真正會寫進 payload 裡的那個數字。",
       // Same buffer/s0/ra shape as L2-5a/L2-5c, filled through the end of
       // saved ra — illustrates "ra now holds win()'s address", the state
       // this step's practice is about to produce for real.
@@ -1795,47 +1807,44 @@ export const L2_5B: LevelSchema = {
     },
     {
       widgetType: "drag-fill",
-      // Same L2-1 pattern: options are real asm text, not opaque hex
-      // numbers (cogload-review-L2.md finding #2 / the "誠實性" self-check
-      // in level-design-principles.md — a hardcoded hex answer can't be
-      // derived from anything on screen, a label-address instruction can).
-      // "la t0, win_label" is the only option that ever resolves to the
-      // assembler's real computed address for this program's win_label —
-      // exactly the mechanism L2-5c's win-addr item ("la t0, win_label; sw
-      // t0, 0(t1)") depends on, so this step is genuinely its lead-in, not
-      // a different mental model.
-      //   - "li t0, 0x10050" / "li t0, 0x100a0": literal guesses at a
-      //     number nothing on screen ever revealed — land outside this
-      //     small self-contained program's own code, so the ra "return"
-      //     below jumps into unmapped/garbage territory and never prints.
-      //   - "mv t0, ra": copies the *current* ra, which at this point in
-      //     _start is still its reset value (0) — jumps to address 0,
-      //     also never prints.
+      // Direction fix (see step 1's comment above): options are now plain
+      // hex numbers, not asm instructions — matching the pwn framing that
+      // an attacker writes a *number* into the payload, not a label
+      // reference. optionAsm maps each number to "li t0, <number>" so the
+      // real assembler still does the real encoding work; nothing here is a
+      // hardcoded judge answer independent of what gets assembled.
+      //
+      // "0x1001c" is the only option that is genuinely this skeleton's real
+      // win_label address (hand-derived + assemble()-verified in step 1's
+      // comment above). The wrong options are each *structurally*
+      // guaranteed to miss, not just coincidentally wrong:
+      //   - "0x0": ra ends up 0 — jumps to address 0, far below
+      //     BASE_ADDRESS, unmapped — illegal-instruction trap, not luck.
+      //   - "0x10050" / "0x10100": both sit past this program's own last
+      //     byte (buf ends at 0x10045 + 4 = 0x10049 — see step 1's symbol
+      //     table) — jumping there lands in unmapped/zero memory, same
+      //     guaranteed-crash reasoning, not a coincidence that they also
+      //     happen not to print.
       // asmSuffix writes t0 into a stand-in "saved ra" slot, reads it back
       // into the real `ra` register, and executes `ret` (jalr x0, ra, 0) —
-      // only "la t0, win_label" lands on win_label and prints WIN!, so
+      // only 0x1001c lands on win_label and prints WIN!, so
       // judge.expect.stdoutContains checks a fact the emulator run
       // demonstrates, not a number the schema asserts.
       judge: { kind: "emulator", expect: { stdoutContains: "WIN!" } },
-      title: "選出真的能取到 win() 位址的做法",
+      title: "選出 win() 真正的位址",
       prompt:
-        "從選項中選出能把 `win()` 真實位址放進 `t0` 的正確做法。選對送出後，會真的組譯執行一段小程式：把 `t0` 寫進模擬的 `saved ra`，再讓程式 `ret` 過去，看看是不是真的落在 `win()` 上。",
+        "從選項中選出 `win()` 真正的位址——上一步已經帶你手算過了。選對送出後，會真的組譯執行一段小程式：把這個數字寫進模擬的 `saved ra`，再讓程式 `ret` 過去，看看是不是真的落在 `win()` 上。",
       slots: [
         {
           id: "winAddr",
-          label: "取得 win() 位址",
-          options: [
-            "la t0, win_label",
-            "li t0, 0x10050",
-            "li t0, 0x100a0",
-            "mv t0, ra",
-          ],
-          answer: "la t0, win_label",
+          label: "win() 的真實位址",
+          options: ["0x1001c", "0x0", "0x10050", "0x10100"],
+          answer: "0x1001c",
           optionAsm: {
-            "la t0, win_label": "la t0, win_label",
-            "li t0, 0x10050": "li t0, 0x10050",
-            "li t0, 0x100a0": "li t0, 0x100a0",
-            "mv t0, ra": "mv t0, ra",
+            "0x1001c": "li t0, 0x1001c",
+            "0x0": "li t0, 0x0",
+            "0x10050": "li t0, 0x10050",
+            "0x10100": "li t0, 0x10100",
           },
         },
       ],
@@ -1869,8 +1878,16 @@ export const L2_5C: LevelSchema = {
       widgetType: "observation",
       judge: { kind: "none" },
       title: "把三塊拼成一條 payload",
+      // Direction fix (same repo-owner review as L2-5b): the win-addr item
+      // used to write `win_label`'s address via `la t0, win_label` — a
+      // label reference that only exists at assemble-time, not the raw
+      // number a real attacker would have. It now writes the real number
+      // (0x10060), hand-derived for THIS level's own fixed skeleton (this
+      // level's asmPrefix/items/asmSuffix differ from L2-5b's, so the
+      // number is different — see the win-addr item's comment below for the
+      // byte-by-byte count, verified by actually assembling it).
       prompt:
-        "L2-5a 找到的 offset（32-byte buffer 填滿＋整個 4-byte `saved s0`，共 36 bytes）、L2-5b 選到的 `win()` 位址，現在要拼成同一條 bytes：\n- 先用 padding 把 32-byte `buffer` **整個填滿**\n- 接著 `saved s0` 那 4 bytes 值不重要（函式不會再用到它），但長度要對，因為它排在 `buffer` 跟 `saved ra` 中間\n- 最後 4 bytes 換成 `win()` 的位址，落在 `saved ra` 的位置\n\n這一步不是拿去打 L2-5a/5b 敘事裡那支「有邊界檢查漏洞的 binary」（那支 binary 目前只存在於敘事，還沒有真的編出來）——而是自己組一支小程式，把這三塊 bytes 依序寫進一塊記憶體，再讀出最後 4 bytes 當成 `ra` 跳過去，藉此驗證「payload 三塊怎麼排」這個技巧本身有沒有抓對。**順序排錯，最後跳的位址就不是 `win()`，程式會跳飛。**",
+        "L2-5a 找到的 offset（32-byte buffer 填滿＋整個 4-byte `saved s0`，共 36 bytes）、L2-5b 學到的「位址是照組譯規則數出來的，不是標籤」，現在要合起來拼成同一條 bytes：\n- 先用 padding 把 32-byte `buffer` **整個填滿**\n- 接著 `saved s0` 那 4 bytes 值不重要（函式不會再用到它），但長度要對，因為它排在 `buffer` 跟 `saved ra` 中間\n- 最後 4 bytes 換成 `win()` 的位址，落在 `saved ra` 的位置\n\n這一關組出來的骨架跟 L2-5b 不一樣（多了 padding／saved s0 兩塊，`win_label` 前面固定不動的程式碼長度也不同），所以位址要重新算一次，不能直接套用 L2-5b 那個數字——用同一套規則（`BASE_ADDRESS = 0x10000`、大多數指令 4 bytes、`la`／大立即數 `li` 是 8 bytes）照這一關自己的骨架數，會得到 `win()` 真正的位址是 `0x10060`，這就是下面 `win() 位址` 那塊要寫進 payload 的數字。\n\n這一步不是拿去打 L2-5a/5b 敘事裡那支「有邊界檢查漏洞的 binary」（那支 binary 目前只存在於敘事，還沒有真的編出來）——而是自己組一支小程式，把這三塊 bytes 依序寫進一塊記憶體，再讀出最後 4 bytes 當成 `ra` 跳過去，藉此驗證「payload 三塊怎麼排」這個技巧本身有沒有抓對。**順序排錯，最後跳的位址就不是 `win()`，程式會跳飛。**",
       // Fully filled through the end of saved ra — the finished payload
       // state this step's drag-order practice is assembling toward.
       stackVisual: {
@@ -1893,9 +1910,12 @@ export const L2_5C: LevelSchema = {
       // order. The trailing "load ra from buf+36, jalr" only reaches
       // `win-label` (and prints "flag") when win-addr's 4 bytes actually end
       // up at buf+36, i.e. when the 32-byte padding + 4-byte filler
-      // together precede it — same 32/4/4 layout and same win() address
-      // (0x10074) L2-5a/L2-5b already established, so the three levels'
-      // numbers stay consistent.
+      // together precede it — same 32/4/4 layout L2-5a/L2-5b already
+      // established. win_label's own address (0x10060) is specific to THIS
+      // level's skeleton (asmPrefix + all three items' combined byte count +
+      // asmSuffix's lead-in) — recomputed and assemble()-verified for this
+      // skeleton, not reused from L2-5b's different one. See win-addr item's
+      // comment below for the byte count.
       judge: { kind: "emulator", expect: { stdoutContains: "flag" } },
       title: "排出正確的 payload",
       prompt:
@@ -1925,9 +1945,27 @@ export const L2_5C: LevelSchema = {
         },
         {
           id: "win-addr",
-          // Canon win() address from L2-5b (0x10074).
           label: "win() 位址",
-          asm: "    la t0, win_label\n    sw t0, 0(t1)\n    addi t1, t1, 4",
+          // Direction fix (see step 1's comment above): writes the real
+          // numeric address, not a `la`/label reference — that syntax only
+          // exists at assemble-time, a real attacker never gets it.
+          //
+          // 0x10060 is THIS level's own win_label address, hand-derived by
+          // walking the fixed parts of this skeleton (asmPrefix + all three
+          // items' combined bytes, in any order, + asmSuffix's lead-in —
+          // reordering the drag-order items doesn't change the *total*
+          // byte count, only which chunk lands at which buf offset) and
+          // assemble()-verified, not reused from L2-5b's different number:
+          //   - asmPrefix "la t1, buf" (8B) + "mv t2, t1" (4B) -> 0x1000c
+          //   - padding item: li (2w, 0x41414141 doesn't fit 12-bit) + 8x sw
+          //     (1w each) + addi (1w) = 11 words = 44B -> 0x10038
+          //   - fake-s0 item: li (2w) + sw (1w) + addi (1w) = 4 words = 16B
+          //     -> 0x10048
+          //   - this item itself: li (2w, 0x10060 doesn't fit 12-bit either)
+          //     + sw (1w) + addi (1w) = 4 words = 16B -> 0x10058
+          //   - asmSuffix's "lw ra, 36(t2)" (4B) -> 0x1005c, then
+          //     "jalr x0, ra, 0" (4B) -> 0x10060 = win_label
+          asm: "    li t0, 0x10060\n    sw t0, 0(t1)\n    addi t1, t1, 4",
         },
       ],
       correctOrder: ["padding", "fake-s0", "win-addr"],
