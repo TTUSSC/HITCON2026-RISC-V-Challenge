@@ -1,6 +1,6 @@
 // Builds a self-contained test program that runs some setup/instruction-
-// under-test assembly and then reports one register's final value back out
-// as a "reg=value" line on stdout.
+// under-test assembly and then reports one or more registers' final values
+// back out as "reg=value" lines on stdout.
 //
 // Why this exists (see the L0 register-read design note in judge.ts/
 // LevelPlayer.tsx): the vendored rv32emu WASM build exports no
@@ -9,72 +9,80 @@
 // indirect_rv_alive/halt/cleanup/stop_requested, nothing that reads CPU
 // state. Rebuilding rv32emu's Emscripten build to add such an export is out
 // of scope (no local RISC-V/Emscripten toolchain in this environment) — so
-// instead the assembled *guest* program converts its own target register to
-// a decimal string and writes it to stdout via the write syscall (a7=64),
-// same as any other guest program would.
+// instead the assembled *guest* program converts its own target register(s)
+// to decimal strings and writes them to stdout via the write syscall
+// (a7=64), same as any other guest program would.
 //
 // Verified end-to-end against the real WASM build: rv32emu's write syscall
 // (src/syscall.c: syscall_write) fwrite()s straight to the fd-mapped stdout
 // FILE*, and Module.print (rv32emu.js's per-line stdout callback) only fires
 // once a line is complete — a write() with no trailing "\n" is silently
-// dropped from `EmulatorResult.stdout`. So the harness always ends its
-// output with "\n", and `emulatorAdapter.run()` parses trailing "name=value"
-// stdout lines into `EmulatorResult.registers`, giving callers a
-// `result.registers["a0"]`-shaped read exactly as if a real register read
-// had happened.
+// dropped from `EmulatorResult.stdout`. So the harness always ends each
+// register's line with "\n", and `emulatorAdapter.run()` parses every
+// trailing "name=value" stdout line into `EmulatorResult.registers` (it
+// already loops over all stdout lines, so probing several registers needs
+// no change on the parsing side — see emulatorAdapter.ts's
+// parseRegisterLines), giving callers a `result.registers["a0"]`-shaped read
+// exactly as if a real register read had happened.
 //
 // The decimal-conversion loop only has add/addi/sub/branches/lb/sb available
 // (no RV32M divide), so it computes value/10 and value%10 by repeated
 // subtraction each digit — fine for the tiny (single/low-double-digit)
 // register values this curriculum ever checks.
+//
+// Multiple target registers (e.g. L1-1's merged-checkpoint step, which
+// checks a0 *and* a1 together): each register gets its own probe block with
+// its own uniquely-labeled loop/data symbols (label collisions would
+// otherwise be a hard assembler error), run back-to-back after the shared
+// setup, each printing its own "reg=value\n" line in the order given. A
+// single register still goes through the same path as a one-element list.
 
-export function buildRegisterProbeProgram(
-  setupAsm: string,
-  targetRegister: string,
-  // Extra `.data`-style lines (labels + .word/.byte/.asciz/.space) the
-  // setup asm references, e.g. L0-3's known memory values for lw to load
-  // from. Must be data only, no instructions — it's appended after the
-  // probe's own trailing code, so anything placed here is never executed,
-  // only ever addressed via `la`/`lw`/`sw` from setupAsm.
-  extraData = "",
-): string {
-  return `
-.text
-_start:
-${setupAsm}
-    mv   t0, ${targetRegister}
-    la   t2, __probe_digbuf
+interface ProbeBlock {
+  code: string;
+  data: string;
+}
+
+function buildProbeBlock(targetRegister: string, index: number): ProbeBlock {
+  const loop = `__probe_loop_${index}`;
+  const done = `__probe_done_${index}`;
+  const digitDiv = `__probe_digit_div_${index}`;
+  const digitDivDone = `__probe_digit_div_done_${index}`;
+  const prefix = `__probe_prefix_${index}`;
+  const digbuf = `__probe_digbuf_${index}`;
+
+  const code = `    mv   t0, ${targetRegister}
+    la   t2, ${digbuf}
     addi t2, t2, 15
     li   t3, 0
     li   t6, 10
 
-    bne  t0, x0, __probe_loop
+    bne  t0, x0, ${loop}
     addi t2, t2, -1
     li   t4, 48
     sb   t4, 0(t2)
     addi t3, t3, 1
-    jal  x0, __probe_done
+    jal  x0, ${done}
 
-__probe_loop:
-    beq  t0, x0, __probe_done
+${loop}:
+    beq  t0, x0, ${done}
     li   t4, 0
     mv   t5, t0
-__probe_digit_div:
-    blt  t5, t6, __probe_digit_div_done
+${digitDiv}:
+    blt  t5, t6, ${digitDivDone}
     sub  t5, t5, t6
     addi t4, t4, 1
-    jal  x0, __probe_digit_div
-__probe_digit_div_done:
+    jal  x0, ${digitDiv}
+${digitDivDone}:
     addi t5, t5, 48
     addi t2, t2, -1
     sb   t5, 0(t2)
     addi t3, t3, 1
     mv   t0, t4
-    jal  x0, __probe_loop
+    jal  x0, ${loop}
 
-__probe_done:
+${done}:
     # write "<targetRegister>=" prefix first (stays buffered, no newline yet)
-    la   a1, __probe_prefix
+    la   a1, ${prefix}
     li   a2, ${targetRegister.length + 1}
     li   a0, 1
     li   a7, 64
@@ -88,13 +96,39 @@ __probe_done:
     mv   a2, t3
     li   a0, 1
     li   a7, 64
-    ecall
+    ecall`;
+
+  const data = `${prefix}: .ascii "${targetRegister}="
+${digbuf}: .space 20`;
+
+  return { code, data };
+}
+
+export function buildRegisterProbeProgram(
+  setupAsm: string,
+  targetRegisters: string | string[],
+  // Extra `.data`-style lines (labels + .word/.byte/.asciz/.space) the
+  // setup asm references, e.g. L0-3's known memory values for lw to load
+  // from. Must be data only, no instructions — it's appended after the
+  // probe's own trailing code, so anything placed here is never executed,
+  // only ever addressed via `la`/`lw`/`sw` from setupAsm.
+  extraData = "",
+): string {
+  const targets = Array.isArray(targetRegisters)
+    ? targetRegisters
+    : [targetRegisters];
+  const blocks = targets.map((reg, i) => buildProbeBlock(reg, i));
+
+  return `
+.text
+_start:
+${setupAsm}
+${blocks.map((b) => b.code).join("\n")}
     li   a0, 0
     li   a7, 93
     ecall
 .data
-__probe_prefix: .ascii "${targetRegister}="
-__probe_digbuf: .space 20
+${blocks.map((b) => b.data).join("\n")}
 ${extraData}
 `;
 }

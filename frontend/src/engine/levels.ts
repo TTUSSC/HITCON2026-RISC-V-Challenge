@@ -574,6 +574,43 @@ export const L0_4: LevelSchema = {
 // Level 1 — Calling Convention
 // ---------------------------------------------------------------------------
 
+// 8-step sequence per docs/design/cogload-review-L1.md's L1-1 proposal
+// (infer-don't-tell: 2-3 worked examples before any rule is stated, then a
+// retrieval step, then real emulator-graded practice), extended per the
+// content-redesign brief to also give L1-1 genuine graded practice (the
+// review's own proposal only reached direct-judge retrieval taps, never an
+// actual assemble+run) and a merged checkpoint that requires two already-
+// taught registers at once — the platform-wide gap
+// docs/design/level-design-principles.md calls out ("L1 從頭到尾沒有任何一步
+// 要求同時填 a0 又填 a7"). Scope stays L1-1-only: ordinary function calls,
+// no syscall/a7-number framing (L1-2), no fd (L1-3), no ra/sp (L1-4).
+//
+// 1. observation — bare framing, no rule stated yet (a0-a7 exist as a
+//    group), full 8-box bank with no values: sets up "watch for the
+//    pattern" before any example.
+// 2. observation — worked example 1, sum2(3, 5) -> a0=3, a1=5, before/after
+//    RegisterBank transition scoped to just a0/a1.
+// 3. observation — worked example 2, sum3(2, 4, 6) -> a0=2, a1=4, a2=6,
+//    scoped to a0-a2. A second, differently-shaped call so the pattern
+//    (not a one-off fact) is what repeats.
+// 4. fill-blank, judge:"direct" — first-practice retrieval: given the
+//    pattern from steps 2-3, predict the register for an unseen 4th
+//    position (pack4's x4). No emulator run needed — this tests the
+//    positional rule itself, not code execution.
+// 5. fill-blank, judge:"emulator" — first real assemble+run practice:
+//    place pair()'s 2nd argument into its correct register. Single
+//    checkRegister, same pattern L1-2 already uses for a fixed-value
+//    register-name pick.
+// 6. fill-blank, judge:"emulator", 2 blanks/2 registers — the merged
+//    checkpoint: sum2(3, 5) again (callback to step 2), but this time the
+//    learner must place *both* arguments correctly in the same program;
+//    checkRegister: ["a0", "a1"] only passes if both picks are right (see
+//    registerProbe.ts's multi-register probe support added for this step).
+// 7. observation — return-value beat, kept separate from the argument
+//    bloc per the review's explicit split: the answer also travels through
+//    a0, but that's a distinct fact from "arguments go in a0.. in order."
+// 8. fill-blank, judge:"emulator" — return-value register retrieval, real
+//    assemble+run (same single-checkRegister pattern as step 5).
 export const L1_1: LevelSchema = {
   id: "L1-1",
   title: "a0–a7：你跟外界溝通的管道",
@@ -584,8 +621,85 @@ export const L1_1: LevelSchema = {
       judge: { kind: "none" },
       title: "a0–a7：你跟外界溝通的管道",
       prompt:
-        "這 8 個暫存器（`x10`–`x17`，也就是 `a0`–`a7`）是函式參數／回傳值。先不談 `ra`／`sp`，只建立這一件事：**這 8 個是你跟外界溝通的管道**。",
+        "呼叫函式的時候，引數要怎麼從呼叫者手上交給函式？RISC-V 保留了 `a0`–`a7`（也就是 `x10`–`x17`）這 8 個暫存器，專門用來傳遞引數和回傳值。先不談 `ra`／`sp`，只看這 8 個。接下來看兩個實際呼叫的例子，找出引數放置的規律。",
       registerContext: ["a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7"],
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "範例一：兩個引數",
+      prompt: "呼叫 `sum2(3, 5)` 前，呼叫者把兩個引數依序放進暫存器：",
+      registerContext: ["a0", "a1"],
+      registerAfter: { a0: "3", a1: "5" },
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "範例二：三個引數",
+      prompt: "再看一個引數更多的呼叫，`sum3(2, 4, 6)`：",
+      registerContext: ["a0", "a1", "a2"],
+      registerAfter: { a0: "2", a1: "4", a2: "6" },
+    },
+    {
+      widgetType: "fill-blank",
+      judge: { kind: "direct" },
+      title: "找出規律",
+      prompt:
+        "兩個例子都一樣：第 1 個引數放 `a0`，第 2 個放 `a1`，第 3 個放 `a2`，依序往後排。照這個規律，呼叫 `pack4(x1, x2, x3, x4)` 時，第 4 個引數 `x4` 會放進哪個暫存器？",
+      blanks: [{ id: "pos4", answer: "a3", options: ["a2", "a3", "a4", "a7"] }],
+    },
+    {
+      widgetType: "fill-blank",
+      judge: { kind: "emulator", expect: { registers: { a1: 11 } } },
+      title: "把引數放進正確的暫存器",
+      prompt:
+        "呼叫 `pair(6, 11)`，把第 2 個引數 `11` 放進正確的暫存器。這次是真的組譯執行，選對才會通過判定。",
+      asmLines: ["li {{reg}}, 11   # 第 2 個引數 = 11"],
+      setupAsmTemplate: "li {{reg}}, 11",
+      checkRegister: "a1",
+      blanks: [{ id: "reg", answer: "a1", options: ["a0", "a1", "a2", "a7"] }],
+      registerContext: ["a0", "a1", "a2", "a7"],
+    },
+    {
+      widgetType: "fill-blank",
+      judge: {
+        kind: "emulator",
+        expect: { registers: { a0: 3, a1: 5 } },
+      },
+      title: "同時放對兩個引數",
+      prompt:
+        "呼叫 `sum2(3, 5)`。這次換你把兩個引數都放進正確的暫存器，兩個都要對才會通過判定。",
+      asmLines: [
+        "li {{reg0}}, 3   # 第 1 個引數 = 3",
+        "li {{reg1}}, 5   # 第 2 個引數 = 5",
+      ],
+      setupAsmTemplate: "li {{reg0}}, 3\nli {{reg1}}, 5",
+      checkRegister: ["a0", "a1"],
+      blanks: [
+        { id: "reg0", answer: "a0", options: ["a0", "a1", "a2", "a7"] },
+        { id: "reg1", answer: "a1", options: ["a0", "a1", "a2", "a7"] },
+      ],
+      registerContext: ["a0", "a1", "a2", "a7"],
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "回傳值也走同一條路",
+      prompt:
+        "引數是呼叫者放進暫存器給函式讀；函式算完之後，答案要怎麼傳回去？一樣借用同一組管道：**回傳值放進 `a0`**。假設 `square(4)` 算出 `16`，函式回傳前會把 `16` 放進 `a0`。",
+      registerContext: ["a0"],
+      registerAfter: { a0: "16" },
+    },
+    {
+      widgetType: "fill-blank",
+      judge: { kind: "emulator", expect: { registers: { a0: 20 } } },
+      title: "回傳值放進哪裡？",
+      prompt: "函式算出答案是 `20`，要放進哪個暫存器，呼叫者才讀得到？",
+      asmLines: ["li {{reg}}, 20   # 回傳值 = 20"],
+      setupAsmTemplate: "li {{reg}}, 20",
+      checkRegister: "a0",
+      blanks: [{ id: "reg", answer: "a0", options: ["a0", "a1", "a7", "ra"] }],
+      registerContext: ["a0", "a1", "a7", "ra"],
     },
   ],
 };

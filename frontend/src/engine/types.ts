@@ -204,7 +204,17 @@ export interface FillBlankStep extends StepBase {
   // assembler/registerProbe.ts's buildRegisterProbeProgram, which appends
   // code to report `checkRegister`'s final value.
   setupAsmTemplate?: string;
-  checkRegister?: string;
+  // Single register name, or multiple for a "merged checkpoint" step that
+  // requires several already-taught facts at once (e.g. L1-1's step asking
+  // the learner to place two call arguments into their correct registers in
+  // the same program — see docs/design/level-design-principles.md's "至少
+  // 一次合併檢查點" rule). buildRegisterProbeProgram probes each register in
+  // order and prints one "reg=value" line per register; emulatorAdapter's
+  // parseRegisterLines already loops over every stdout line, so multiple
+  // probed registers land in EmulatorResult.registers same as a single one
+  // would — judge.expect.registers was already Record<string, number>, so
+  // no judging changes were needed, only the probe program generation.
+  checkRegister?: string | string[];
   // Extra data-only asm (labels + .word/.byte/.asciz/.space, no
   // instructions) that setupAsmTemplate addresses via la/lw/sw — e.g. L0-3
   // needs known memory contents for `lw` to read from. See
