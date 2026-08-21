@@ -1680,25 +1680,85 @@ export const L2_5A: LevelSchema = {
     },
     {
       widgetType: "lever-slider",
-      judge: { kind: "direct" },
+      // Not a placeholder number to memorize — dragging the slider only
+      // redraws StackDiagram locally (cheap); Submit assembles asmTemplate
+      // below with the current value spliced in for "{{n}}" and really runs
+      // it on rv32emu. The program plants two sentinels in a self-contained
+      // .data buffer: 0xdeadbeef at buf+36 (the "saved ra" slot) and
+      // 0xcafebabe at buf+40 (one word past it, standing in for whatever
+      // else sits further up the stack). It then writes exactly `value`
+      // bytes of 0x41 filler starting at buf+0 — the "attacker input" — and
+      // reads both slots back:
+      //   - buf+36 != 0x41414141 -> ra isn't *fully* attacker-controlled yet
+      //     (too short, prints TOO_SHORT!)
+      //   - buf+36 == 0x41414141 but buf+40 got clobbered too -> overshot
+      //     past ra into whatever comes next (too far, prints TOO_FAR!)
+      //   - buf+36 == 0x41414141 and buf+40 still == 0xcafebabe -> exactly
+      //     the 32-byte buffer + 4-byte saved s0 got filled and all 4 bytes
+      //     of saved ra got overwritten, nothing more (prints JUST_RIGHT)
+      // JUST_RIGHT is only reachable at value === 40 (32 + 4 + 4, the same
+      // bufferSize/savedS0Size/savedRaSize below) — one byte short leaves a
+      // stale sentinel byte in the ra word, one byte over starts eating the
+      // next sentinel. judge.expect.stdoutContains checks for that exact
+      // marker, so "剛好" is a fact the emulator run demonstrates, not a
+      // number the schema asserts.
+      judge: { kind: "emulator", expect: { stdoutContains: "JUST_RIGHT" } },
       title: "滑到剛好蓋到 ra 的 offset",
       prompt:
-        "拖曳輸入長度滑桿，即時視覺化 `buffer` → `saved s0` → `saved ra` 被吃掉的過程，滑到**剛好蓋到 ra** 的 offset。",
+        "拖曳輸入長度滑桿，即時視覺化 `buffer` → `saved s0` → `saved ra` 被吃掉的過程。滑到你覺得剛好的 offset 後按送出，會真的組譯執行一段小程式驗證：太短，`ra` 那 4 bytes 沒被你的輸入完全蓋過；太多，會連 `ra` 後面那格資料都一起蓋過去。剛好蓋滿 `ra`、不多不少，才會過。",
       min: 0,
       max: 64,
-      // TODO: placeholder pending real test ELF (see levels.md 待驗證/待辦)
-      target: 40,
-      // Stack shape matches the target above: 32-byte buffer + 4-byte saved
-      // s0 means offset 36 is where saved ra begins, but the "just right"
-      // answer is framed as "剛好蓋到 ra" so target sits right at that
-      // boundary + 4 slack; adjust alongside target once the real test ELF
-      // lands.
       stackVisual: {
         bufferSize: 32,
         mode: "offset",
         savedS0Size: 4,
         savedRaSize: 4,
       },
+      asmTemplate:
+        "_start:\n" +
+        "    la t1, buf\n" +
+        "    la t2, buf\n" +
+        "    li t3, 0xdeadbeef\n" +
+        "    sw t3, 36(t2)\n" +
+        "    li t3, 0xcafebabe\n" +
+        "    sw t3, 40(t2)\n" +
+        "    li t0, {{n}}\n" +
+        "    li t4, 0x41\n" +
+        "write_loop:\n" +
+        "    beq t0, x0, write_done\n" +
+        "    sb t4, 0(t1)\n" +
+        "    addi t1, t1, 1\n" +
+        "    addi t0, t0, -1\n" +
+        "    jal x0, write_loop\n" +
+        "write_done:\n" +
+        "    lw a0, 36(t2)\n" +
+        "    li a4, 0x41414141\n" +
+        "    bne a0, a4, too_short\n" +
+        "    lw a1, 40(t2)\n" +
+        "    li a5, 0xcafebabe\n" +
+        "    bne a1, a5, too_far\n" +
+        "    la a1, msg_right\n" +
+        "    li a2, 10\n" +
+        "    jal x0, do_print\n" +
+        "too_short:\n" +
+        "    la a1, msg_short\n" +
+        "    li a2, 10\n" +
+        "    jal x0, do_print\n" +
+        "too_far:\n" +
+        "    la a1, msg_far\n" +
+        "    li a2, 8\n" +
+        "do_print:\n" +
+        "    li a0, 1\n" +
+        "    li a7, 64\n" +
+        "    ecall\n" +
+        "    li a0, 0\n" +
+        "    li a7, 93\n" +
+        "    ecall\n" +
+        ".data\n" +
+        "buf: .space 80\n" +
+        'msg_right: .ascii "JUST_RIGHT"\n' +
+        'msg_short: .ascii "TOO_SHORT!"\n' +
+        'msg_far: .ascii "TOO_FAR!"\n',
     },
   ],
 };

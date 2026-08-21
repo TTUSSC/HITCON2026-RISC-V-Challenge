@@ -277,7 +277,10 @@ export interface LeverSliderStep extends StepBase {
   widgetType: "lever-slider";
   min: number;
   max: number;
-  target?: number; // absent when judge.kind === 'none' (pure feel, e.g. L3-1)
+  // Only meaningful for judge.kind === 'direct' — absent when judge.kind is
+  // 'none' (pure feel, e.g. L3-1) or 'emulator' (asmTemplate below decides
+  // pass/fail from the real run, not a hardcoded number).
+  target?: number;
   // Optional stack-diagram parameters (StackDiagram component) driven live
   // by the slider value. Absent -> LeverSliderWidget degrades to a plain
   // slider (e.g. for a future non-stack-overflow lever-slider level).
@@ -288,6 +291,16 @@ export interface LeverSliderStep extends StepBase {
     savedS0Size: number;
     savedRaSize: number;
   };
+  // judge.kind 'emulator' only (L2-5a): a full self-contained assembly
+  // program with a single "{{n}}" placeholder (see asmTemplate.ts's
+  // substituteAsmTemplate) for the slider's submitted value. Dragging the
+  // slider never assembles/runs anything — only Submit does, substituting
+  // the current value and assembling once — so the interaction stays a
+  // cheap live redraw (StackDiagram) until the player commits to an answer.
+  // Unlike DragOrderStep's asmPrefix/asmSuffix (concatenated around
+  // per-item asm), there's no per-item asm to splice here, so this is one
+  // full program rather than a prefix/suffix pair.
+  asmTemplate?: string;
 }
 
 export interface ByteGuesserStep extends StepBase {
