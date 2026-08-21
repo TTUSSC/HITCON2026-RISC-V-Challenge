@@ -9,6 +9,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { getOrCreateProfileId, regenerateProfileId } from "./profileId";
+import { submitPass } from "./leaderboardClient";
 import type { RewardKind, SessionProgress } from "./types";
 
 function generateSessionId(): string {
@@ -41,7 +42,7 @@ export interface SessionStore extends SessionProgress {
 
 export const useSessionStore = create<SessionStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       sessionId: generateSessionId(),
       profileId: getOrCreateProfileId(),
       displayName: "",
@@ -75,7 +76,7 @@ export const useSessionStore = create<SessionStore>()(
           };
         }),
 
-      recordPass: (levelId) =>
+      recordPass: (levelId) => {
         set((state) => {
           const existing = state.events.find((e) => e.levelId === levelId);
           if (!existing) {
@@ -97,7 +98,23 @@ export const useSessionStore = create<SessionStore>()(
               e.levelId === levelId ? { ...e, passedAt: Date.now() } : e,
             ),
           };
-        }),
+        });
+
+        // Fire-and-forget leaderboard upload, after the local state is
+        // committed so the payload carries the up-to-date attempt count. This
+        // is the only place in the app a pass is recorded, so it fires exactly
+        // once per level. It no-ops unless VITE_LEADERBOARD_API is configured
+        // and never throws — see leaderboardClient.ts.
+        const state = get();
+        const event = state.events.find((e) => e.levelId === levelId);
+        void submitPass({
+          profileId: state.profileId,
+          displayName: state.displayName,
+          entryPoint: state.entryPoint,
+          levelId,
+          attempts: event?.attempts ?? 1,
+        });
+      },
 
       grantReward: (kind, levelId) =>
         set((state) => ({

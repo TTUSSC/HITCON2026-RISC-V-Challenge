@@ -29,3 +29,12 @@ repos:
         language: system
         files: ^frontend/.*\.(js|jsx|ts|tsx|css|json)$
         pass_filenames: false
+    -   id: backend-test
+        name: backend tests
+        entry: pnpm --dir backend run test
+        language: system
+        # Also runs when the frontend's level list changes: the drift guard in
+        # backend/test/shared/levelOrder.drift.test.ts is what catches someone
+        # adding a level without updating the backend's LEVEL_ORDER.
+        files: ^(backend/.*\.ts|frontend/src/engine/levels\.ts)$
+        pass_filenames: false
