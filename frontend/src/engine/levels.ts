@@ -795,20 +795,53 @@ export const L1_2: LevelSchema = {
 
 export const L1_3: LevelSchema = {
   id: "L1-3",
-  title: "write 要知道寫到哪裡",
+  title: "fd：寫到哪個目的地",
   onPass: { advance: "L1-4" },
+  // Scope narrowed per the repo owner's explicit note: write's own purpose/
+  // signature (fd/buf/len 三項資訊、a7=64) is now entirely L1-2's job — see
+  // that level's file comment. L1-3 only owns the one thing L1-2 deliberately
+  // left unsaid: fd 的三個具體數值。4-step sequence, kept short because the
+  // remaining scope really is this small (level-design-principles.md's 5-10
+  // step target is a ceiling, not a quota to pad toward):
+  //   1. observation — name the three destinations, no numbers yet.
+  //   2. fill-blank (direct) — inductive scenario quiz, pick a destination
+  //      by name before any number is on screen.
+  //   3. observation — reveal the 0/1/2 mapping + one sentence on why
+  //      stdout/stderr are split (convention, not magic).
+  //   4. fill-blank (emulator) — real practice setting a0 = 1, unchanged
+  //      from the previous version.
   steps: [
     {
       widgetType: "observation",
       judge: { kind: "none" },
-      title: "fd：寫到哪個檔案",
+      title: "fd：寫到哪個目的地",
       prompt:
-        "`write` 光有 `a7=64`（「我要 write 這個服務」）還不夠——系統還要知道「寫到哪裡」。這個「哪裡」用一個小整數代表，叫 **file descriptor（fd）**：\n- `0` 是 stdin（標準輸入）\n- `1` 是 stdout（標準輸出，螢幕會看到的地方）\n- `2` 是 stderr（錯誤訊息）\n\n這個約定放進 `write` 的 `a0` 參數裡。",
-      registerContext: ["a0", "a7"],
-      registerLabels: {
-        a0: "fd（0=stdin/1=stdout/2=stderr）",
-        a7: "64（write，已固定）",
-      },
+        "`write` 已經知道要呼叫哪個服務（`a7=64`），但還不知道「寫到哪裡」。這個「哪裡」放進 `a0`，用一個小整數代表目的地，這種整數叫 **file descriptor（fd）**。系統原生準備了三個目的地：讀進來的資料（`stdin`）、印給人看的正常輸出（`stdout`）、專門印錯誤訊息的地方（`stderr`）。\n\n先不看數字，練習判斷：下面這個情境，該對應哪一個目的地？",
+      registerContext: ["a0"],
+      registerLabels: { a0: "fd" },
+    },
+    {
+      widgetType: "fill-blank",
+      judge: { kind: "direct" },
+      title: "情境：印出計算結果",
+      prompt:
+        "程式算完一個數字，要印在螢幕上，讓使用者直接看到（不是錯誤訊息，也不是讀輸入）。這屬於哪個目的地？",
+      blanks: [
+        {
+          id: "dest",
+          answer: "stdout",
+          options: ["stdin", "stdout", "stderr"],
+        },
+      ],
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "三個目的地各有固定編號",
+      prompt:
+        "答對了：正常輸出是 `stdout`。這三個目的地，各自有系統規定的固定編號：\n- `0` = stdin\n- `1` = stdout\n- `2` = stderr\n\n這幾個數字只是慣例，不是什麼物理限制。`stdout` 跟 `stderr` 特地分成兩個不同的 fd，是為了讓程式的正常輸出跟錯誤訊息可以分開處理，不會混在一起。",
+      registerContext: ["a0"],
+      registerLabels: { a0: "fd" },
     },
     {
       widgetType: "fill-blank",
@@ -826,9 +859,9 @@ export const L1_3: LevelSchema = {
       judge: { kind: "emulator", expect: { registers: { a0: 1 } } },
       setupAsmTemplate: "li a0, {{a0}}",
       checkRegister: "a0",
-      title: "write 要知道寫到哪裡",
+      title: "把 fd 放進 a0",
       prompt:
-        "把 `a0` 設成 **1**（stdout）。L1-2 加上 L1-3，就等於原本一次到位的目標，過關瞬間已經站在 Level 2 門口。",
+        "要把結果印在螢幕上，把 `a0` 設成 **1**（stdout）。這次是真的組譯執行，選對才會通過判定。L1-2 加上 L1-3，就等於原本一次到位的目標，過關瞬間已經站在 Level 2 門口。",
       asmLines: ["li a0, {{a0}}   # 1 = stdout", "li a7, 64", "ecall"],
       blanks: [{ id: "a0", answer: "1", options: ["0", "1", "2", "64"] }],
     },
