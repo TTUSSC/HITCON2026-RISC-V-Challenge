@@ -79,7 +79,9 @@ export interface LeaderboardEntry {
 // contracts on purpose: a failed upload must stay invisible so it cannot spoil
 // a pass, whereas a failed read has a screen waiting on it and needs to show an
 // error rather than an empty board that looks like "nobody has played yet".
-export async function fetchLeaderboard(limit?: number): Promise<LeaderboardEntry[]> {
+export async function fetchLeaderboard(
+  limit?: number,
+): Promise<LeaderboardEntry[]> {
   const base = apiBase();
   if (!base) return [];
 
@@ -87,7 +89,9 @@ export async function fetchLeaderboard(limit?: number): Promise<LeaderboardEntry
   // makes the backend's DEFAULT_LIMIT apply. Sending a client-side default here
   // would silently override it and is exactly how this went wrong before.
   const query = limit === undefined ? "" : `?limit=${limit}`;
-  const response = await fetch(`${base.replace(/\/$/, "")}/leaderboard${query}`);
+  const response = await fetch(
+    `${base.replace(/\/$/, "")}/leaderboard${query}`,
+  );
   if (!response.ok) {
     throw new Error(`leaderboard request failed with ${response.status}`);
   }

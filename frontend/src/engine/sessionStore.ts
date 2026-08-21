@@ -100,11 +100,10 @@ export const useSessionStore = create<SessionStore>()(
           };
         });
 
-        // Fire-and-forget leaderboard upload, after the local state is
-        // committed so the payload carries the up-to-date attempt count. This
-        // is the only place in the app a pass is recorded, so it fires exactly
-        // once per level. It no-ops unless VITE_LEADERBOARD_API is configured
-        // and never throws — see leaderboardClient.ts.
+        // Fire-and-forget leaderboard upload. This is the only place in the app
+        // a pass is recorded, so it fires exactly once per level. It no-ops
+        // unless VITE_LEADERBOARD_API is configured and never throws — see
+        // leaderboardClient.ts.
         const state = get();
         void submitPass({
           profileId: state.profileId,

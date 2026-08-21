@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchLeaderboard, isLeaderboardEnabled, submitPass } from "./leaderboardClient";
+import {
+  fetchLeaderboard,
+  isLeaderboardEnabled,
+  submitPass,
+} from "./leaderboardClient";
 
 const payload = {
   profileId: "3f2a4b6c-1111-2222-3333-444455556666",
@@ -73,7 +77,10 @@ describe("when VITE_LEADERBOARD_API is configured", () => {
   });
 
   it("does not throw when the server returns an error status", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 500 } as Response);
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    } as Response);
     await expect(submitPass(payload)).resolves.toBeUndefined();
   });
 
@@ -120,7 +127,10 @@ describe("when VITE_LEADERBOARD_API is configured", () => {
   });
 
   it("rejects when the server responds with a non-2xx status", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 500 } as Response);
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    } as Response);
     await expect(fetchLeaderboard()).rejects.toThrow();
   });
 });

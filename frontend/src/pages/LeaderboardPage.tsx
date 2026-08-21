@@ -80,7 +80,9 @@ export function LeaderboardPage() {
               <li key={item.rank} className="leaderboard-row">
                 <span className="leaderboard-rank">{item.rank}</span>
                 <span className="leaderboard-name">{item.displayName}</span>
-                <span className="leaderboard-entry-point">{item.entryPoint}</span>
+                <span className="leaderboard-entry-point">
+                  {item.entryPoint}
+                </span>
                 <span className="leaderboard-level">{item.levelId}</span>
               </li>
             ))}
