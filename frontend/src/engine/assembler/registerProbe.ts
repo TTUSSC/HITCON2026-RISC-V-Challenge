@@ -36,13 +36,42 @@
 // otherwise be a hard assembler error), run back-to-back after the shared
 // setup, each printing its own "reg=value\n" line in the order given. A
 // single register still goes through the same path as a one-element list.
+//
+// Every probe block's own write-syscall body clobbers a0/a1/a2/a7 (it has
+// to — those are the real ecall argument registers). That's harmless for a
+// single-register probe, but for a multi-register probe where a *later*
+// target is itself a0/a1/a2/a7 (the exact case L1's calling-convention
+// levels care about), that register would already be corrupted by an
+// earlier block's write call by the time its own block tries to read it.
+// Fixed by capturing every target's value into a dedicated save register
+// (s8upward, chosen because this curriculum's setupAsm content never
+// touches s8+ — see levels.ts's existing "mv s1, a0 # 存到 s1，避免被下一個
+// syscall 蓋掉" pattern for the same clobber problem solved by hand at the
+// content level) *before* any block's write-syscall body runs, so every
+// probe block reads its captured copy instead of the live, possibly
+// already-clobbered register.
 
 interface ProbeBlock {
   code: string;
   data: string;
 }
 
-function buildProbeBlock(targetRegister: string, index: number): ProbeBlock {
+const SAVE_REGISTERS = [
+  "s8",
+  "s9",
+  "s10",
+  "s11",
+  "s7",
+  "s6",
+  "s5",
+  "s4",
+] as const;
+
+function buildProbeBlock(
+  saveRegister: string,
+  targetRegister: string,
+  index: number,
+): ProbeBlock {
   const loop = `__probe_loop_${index}`;
   const done = `__probe_done_${index}`;
   const digitDiv = `__probe_digit_div_${index}`;
@@ -50,7 +79,7 @@ function buildProbeBlock(targetRegister: string, index: number): ProbeBlock {
   const prefix = `__probe_prefix_${index}`;
   const digbuf = `__probe_digbuf_${index}`;
 
-  const code = `    mv   t0, ${targetRegister}
+  const code = `    mv   t0, ${saveRegister}
     la   t2, ${digbuf}
     addi t2, t2, 15
     li   t3, 0
@@ -117,12 +146,26 @@ export function buildRegisterProbeProgram(
   const targets = Array.isArray(targetRegisters)
     ? targetRegisters
     : [targetRegisters];
-  const blocks = targets.map((reg, i) => buildProbeBlock(reg, i));
+  if (targets.length > SAVE_REGISTERS.length) {
+    throw new Error(
+      `buildRegisterProbeProgram: cannot probe ${targets.length} registers at once (max ${SAVE_REGISTERS.length})`,
+    );
+  }
+  // Capture every target's value into its own save register up front, before
+  // any block's write-syscall body has a chance to clobber a0/a1/a2/a7 (see
+  // the file comment above).
+  const captureLines = targets
+    .map((reg, i) => `    mv   ${SAVE_REGISTERS[i]}, ${reg}`)
+    .join("\n");
+  const blocks = targets.map((reg, i) =>
+    buildProbeBlock(SAVE_REGISTERS[i], reg, i),
+  );
 
   return `
 .text
 _start:
 ${setupAsm}
+${captureLines}
 ${blocks.map((b) => b.code).join("\n")}
     li   a0, 0
     li   a7, 93
