@@ -414,3 +414,70 @@
   flex-direction: column;
   gap: 1.2rem;
 }
+
+/* --- Leaderboard page --------------------------------------------------- */
+
+.leaderboard-page {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.leaderboard-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display);
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+
+.leaderboard-note {
+  font-family: var(--font-body);
+  color: var(--text-muted);
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.leaderboard-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-raised);
+  border: 2px solid var(--border);
+  border-radius: 0.75rem;
+}
+
+.leaderboard-rank {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--sky-deep);
+  text-align: center;
+}
+
+.leaderboard-name {
+  font-family: var(--font-body);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.leaderboard-entry-point,
+.leaderboard-level {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 0.15rem 0.5rem;
+  background: var(--bg-sunken);
+  border-radius: 0.4rem;
+}

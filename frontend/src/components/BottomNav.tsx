@@ -1,8 +1,8 @@
 // Persistent bottom navigation bar — Duolingo's actual mobile home-screen
 // structure (top info row + bottom sticky nav), repo-owner-confirmed scope:
-// exactly 4 items (Home / 速查 / About / Profile), no streak/XP/hearts items
-// since those retention mechanics are explicitly out of scope for this app
-// (see docs/design/STYLE.md's "定位" section).
+// exactly 5 items (Home / 速查 / 排行 [leaderboard] / About / Profile), no
+// streak/XP/hearts items since those retention mechanics are explicitly out
+// of scope for this app (see docs/design/STYLE.md's "定位" section).
 //
 // Rendered by App.tsx below <main>, hidden on "/" (EntryPage, before a
 // session exists — nothing to navigate to yet) and on "/level/:levelId"
@@ -13,7 +13,7 @@
 // Duolingo itself hides its bottom nav during an active lesson).
 
 import { NavLink } from "react-router-dom";
-import { Home, BookOpen, Info, CircleUser } from "lucide-react";
+import { Home, BookOpen, Info, CircleUser, Trophy } from "lucide-react";
 import "./BottomNav.css";
 
 interface NavItem {
@@ -30,6 +30,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: "/path", label: "首頁", icon: Home },
   { to: "/reference", label: "速查", icon: BookOpen },
+  { to: "/leaderboard", label: "排行", icon: Trophy },
   { to: "/about", label: "關於", icon: Info },
   { to: "/profile", label: "個人", icon: CircleUser },
 ];

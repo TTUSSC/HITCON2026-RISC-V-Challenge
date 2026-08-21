@@ -15,6 +15,7 @@ import { LevelPage } from "./pages/LevelPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { AboutPage } from "./pages/AboutPage";
 import { ReferencePage } from "./pages/ReferencePage";
+import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { useSessionStore } from "./engine/sessionStore";
 import { levels } from "./engine/levels";
@@ -110,6 +111,7 @@ function AppShell() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/reference" element={<ReferencePage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
