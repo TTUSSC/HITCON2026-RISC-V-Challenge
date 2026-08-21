@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  MAX_ATTEMPTS,
   MAX_DISPLAY_NAME_LENGTH,
-  clampAttempts,
   parseProgressBody,
   sanitizeDisplayName,
 } from "../../src/leaderboard/validate";
@@ -12,7 +10,6 @@ const valid = {
   displayName: "阿明",
   entryPoint: "L1",
   levelId: "L2-0",
-  attempts: 3,
 };
 
 describe("sanitizeDisplayName", () => {
@@ -39,25 +36,6 @@ describe("sanitizeDisplayName", () => {
   });
 });
 
-describe("clampAttempts", () => {
-  it("defaults a missing count to 1", () => {
-    expect(clampAttempts(undefined)).toBe(1);
-  });
-
-  it("raises a nonsensical count up to 1", () => {
-    expect(clampAttempts(0)).toBe(1);
-    expect(clampAttempts(-5)).toBe(1);
-  });
-
-  it("caps an absurd count", () => {
-    expect(clampAttempts(10_000)).toBe(MAX_ATTEMPTS);
-  });
-
-  it("truncates a fractional count", () => {
-    expect(clampAttempts(3.7)).toBe(3);
-  });
-});
-
 describe("parseProgressBody", () => {
   it("accepts a well-formed body and derives the depth server-side", () => {
     const result = parseProgressBody(valid);
@@ -65,7 +43,6 @@ describe("parseProgressBody", () => {
     if (!result.ok) return;
     expect(result.value.depth).toBe(9);
     expect(result.value.levelId).toBe("L2-0");
-    expect(result.value.attempts).toBe(3);
   });
 
   it("ignores any depth the client tries to supply", () => {

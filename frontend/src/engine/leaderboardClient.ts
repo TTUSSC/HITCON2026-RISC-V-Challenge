@@ -28,7 +28,6 @@ export interface PassPayload {
   displayName: string;
   entryPoint: EntryPoint;
   levelId: string;
-  attempts: number;
 }
 
 // Read on each call rather than at module load, so a test can stub the

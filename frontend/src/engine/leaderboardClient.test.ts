@@ -6,7 +6,6 @@ const payload = {
   displayName: "阿明",
   entryPoint: "L1" as const,
   levelId: "L2-0",
-  attempts: 2,
 };
 
 beforeEach(() => {

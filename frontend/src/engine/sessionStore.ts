@@ -106,13 +106,11 @@ export const useSessionStore = create<SessionStore>()(
         // once per level. It no-ops unless VITE_LEADERBOARD_API is configured
         // and never throws — see leaderboardClient.ts.
         const state = get();
-        const event = state.events.find((e) => e.levelId === levelId);
         void submitPass({
           profileId: state.profileId,
           displayName: state.displayName,
           entryPoint: state.entryPoint,
           levelId,
-          attempts: event?.attempts ?? 1,
         });
       },
 

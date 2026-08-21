@@ -18,13 +18,14 @@ export async function recordProgress(input: ProgressInput): Promise<void> {
           updated_at   = now()
   `;
 
-  // passed_at is intentionally absent from the update list: it keeps the
-  // FIRST time this player cleared this level.
+  // No column is worth updating on a replay: depth is a function of level_id,
+  // and passed_at must keep the FIRST clear time because it is the
+  // leaderboard's tie-breaker. `do nothing` makes that guarantee structural
+  // rather than a matter of which columns happen to be in a SET list.
   await sql`
-    insert into passes (profile_id, level_id, depth, attempts)
-    values (${input.profileId}, ${input.levelId}, ${input.depth}, ${input.attempts})
-    on conflict (profile_id, level_id) do update
-      set attempts = excluded.attempts
+    insert into passes (profile_id, level_id, depth)
+    values (${input.profileId}, ${input.levelId}, ${input.depth})
+    on conflict (profile_id, level_id) do nothing
   `;
 }
 

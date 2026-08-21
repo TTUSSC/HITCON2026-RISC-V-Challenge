@@ -21,7 +21,6 @@ create table if not exists passes (
   profile_id text        not null references players (profile_id) on delete cascade,
   level_id   text        not null,
   depth      integer     not null check (depth between 1 and 23),
-  attempts   integer     not null default 1 check (attempts >= 1),
   passed_at  timestamptz not null default now(),
   primary key (profile_id, level_id)
 );

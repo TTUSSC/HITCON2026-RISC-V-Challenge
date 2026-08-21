@@ -56,7 +56,6 @@ const validBody = {
   displayName: "阿明",
   entryPoint: "L1",
   levelId: "L2-0",
-  attempts: 2,
 };
 
 beforeEach(() => {

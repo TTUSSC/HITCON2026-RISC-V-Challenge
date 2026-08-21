@@ -5,7 +5,6 @@ export const ENTRY_POINTS = ["L0", "L1", "L2"] as const;
 export type EntryPoint = (typeof ENTRY_POINTS)[number];
 
 export const MAX_DISPLAY_NAME_LENGTH = 24;
-export const MAX_ATTEMPTS = 999;
 
 // profileId arrives straight from the browser's localStorage. It is usually a
 // crypto.randomUUID(), but frontend/src/engine/profileId.ts falls back to
@@ -25,11 +24,6 @@ export function sanitizeDisplayName(raw: string): string {
   return [...raw.trim()].slice(0, MAX_DISPLAY_NAME_LENGTH).join("").trim();
 }
 
-export function clampAttempts(raw: number | undefined): number {
-  if (typeof raw !== "number" || !Number.isFinite(raw)) return 1;
-  return Math.min(Math.max(Math.trunc(raw), 1), MAX_ATTEMPTS);
-}
-
 const progressSchema = z.object({
   profileId: z
     .string()
@@ -37,7 +31,6 @@ const progressSchema = z.object({
   displayName: z.string().optional(),
   entryPoint: z.enum(ENTRY_POINTS),
   levelId: z.string(),
-  attempts: z.number().optional(),
 });
 
 export interface ProgressInput {
@@ -46,7 +39,6 @@ export interface ProgressInput {
   entryPoint: EntryPoint;
   levelId: string;
   depth: number;
-  attempts: number;
 }
 
 export type ParseResult =
@@ -86,7 +78,6 @@ export function parseProgressBody(body: unknown): ParseResult {
       entryPoint: parsed.data.entryPoint,
       levelId: parsed.data.levelId,
       depth,
-      attempts: clampAttempts(parsed.data.attempts),
     },
   };
 }
