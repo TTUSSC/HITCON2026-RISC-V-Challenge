@@ -23,10 +23,17 @@ export const DEFAULT_LIMIT = 50;
 export const MAX_LIMIT = 200;
 
 export function parseLimit(raw: unknown): number {
-  const value =
-    typeof raw === "string" ? Number(raw) : typeof raw === "number" ? raw : Number.NaN;
-  if (!Number.isFinite(value)) return DEFAULT_LIMIT;
-  return Math.min(Math.max(Math.trunc(value), 1), MAX_LIMIT);
+  if (typeof raw === "string") {
+    if (raw.trim() === "") return DEFAULT_LIMIT;
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return DEFAULT_LIMIT;
+    return Math.min(Math.max(Math.trunc(value), 1), MAX_LIMIT);
+  }
+  if (typeof raw === "number") {
+    if (!Number.isFinite(raw)) return DEFAULT_LIMIT;
+    return Math.min(Math.max(Math.trunc(raw), 1), MAX_LIMIT);
+  }
+  return DEFAULT_LIMIT;
 }
 
 // The SQL already returns rows in this order; sorting again here keeps rank

@@ -24,6 +24,11 @@ describe("parseLimit", () => {
     expect(parseLimit("abc")).toBe(DEFAULT_LIMIT);
   });
 
+  it("defaults for empty or whitespace-only strings", () => {
+    expect(parseLimit("")).toBe(DEFAULT_LIMIT);
+    expect(parseLimit("  ")).toBe(DEFAULT_LIMIT);
+  });
+
   it("accepts a numeric string from the query string", () => {
     expect(parseLimit("10")).toBe(10);
   });
@@ -31,6 +36,10 @@ describe("parseLimit", () => {
   it("clamps to the allowed range", () => {
     expect(parseLimit("0")).toBe(1);
     expect(parseLimit("99999")).toBe(MAX_LIMIT);
+  });
+
+  it("defaults when given an array (query string repetition)", () => {
+    expect(parseLimit(["1", "2"])).toBe(DEFAULT_LIMIT);
   });
 });
 
@@ -63,8 +72,9 @@ describe("rankEntries", () => {
   });
 
   it("never leaks a profileId into the response", () => {
-    const [entry] = rankEntries([row()]);
-    expect(Object.keys(entry)).not.toContain("profileId");
+    const withExtra = { ...row(), profileId: "should-not-appear" } as BestPassRow;
+    const [entry] = rankEntries([withExtra]);
+    expect(entry).not.toHaveProperty("profileId");
   });
 
   it("returns an empty array for no rows", () => {
