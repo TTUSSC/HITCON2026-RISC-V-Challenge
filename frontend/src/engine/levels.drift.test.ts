@@ -57,22 +57,50 @@ const LEVELS_PY_PATH = resolve(
  * instead and comes back with nothing, which reads as "the lists differ"
  * rather than "the parser is broken."
  *
- * Throws if the anchor can't be found, or if there's no closing `)` after
- * it, rather than returning `[]` -- a drift guard that can silently end up
- * comparing an empty list is worse than no guard at all, because it's
- * green.
+ * The anchor also requires a left word boundary (`(?<![A-Za-z0-9_])`)
+ * before `LEVEL_ORDER`, so it cannot match *inside* some future decoy
+ * constant whose name merely ends in `LEVEL_ORDER` -- e.g.
+ * `BASE_LEVEL_ORDER: tuple[str, ...] = (`. Without that boundary, a plain
+ * substring search finds the decoy's embedded `LEVEL_ORDER` first if the
+ * decoy sits above the real assignment, and would happily parse *its*
+ * tuple instead of the real one. If the decoy held a stale-but-plausible
+ * copy while the real `LEVEL_ORDER` had actually drifted, that would make
+ * this guard green and wrong -- worse than simply failing, because
+ * nothing would ever flag it.
+ *
+ * On top of the boundary, the anchor is required to match *exactly once*
+ * in the whole file. Two matches means something genuinely ambiguous is
+ * going on (e.g. two constants that both satisfy the full anchor shape,
+ * not just a name that happens to end the same way) and this guard would
+ * rather fail loudly and force a human to resolve it than silently take
+ * the first match and possibly parse the wrong tuple.
+ *
+ * Throws if the anchor can't be found, if it matches more than once, or
+ * if there's no closing `)` after it, rather than returning `[]` -- a
+ * drift guard that can silently end up comparing an empty list (or the
+ * wrong tuple) is worse than no guard at all, because it's green.
  */
 function extractLevelOrderFromPython(source: string): string[] {
-  const anchor = /LEVEL_ORDER\s*:\s*tuple\[str,\s*\.\.\.\]\s*=\s*\(/;
-  const match = anchor.exec(source);
-  if (!match) {
+  const anchor =
+    /(?<![A-Za-z0-9_])LEVEL_ORDER\s*:\s*tuple\[str,\s*\.\.\.\]\s*=\s*\(/g;
+  const matches = [...source.matchAll(anchor)];
+  if (matches.length === 0) {
     throw new Error(
       `could not find a "LEVEL_ORDER: tuple[str, ...] = (" assignment in ` +
         `${LEVELS_PY_PATH} -- either the file moved, or its syntax changed ` +
         "enough that this test's anchor regex no longer matches it",
     );
   }
+  if (matches.length > 1) {
+    throw new Error(
+      `found ${matches.length} matches for the "LEVEL_ORDER: tuple[str, ` +
+        `...] = (" assignment in ${LEVELS_PY_PATH}, expected exactly one -- ` +
+        "this file is ambiguous and this guard refuses to silently pick " +
+        "one match over another",
+    );
+  }
 
+  const match = matches[0];
   const tupleStart = match.index + match[0].length;
   const tupleEnd = source.indexOf(")", tupleStart);
   if (tupleEnd === -1) {
