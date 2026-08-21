@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { isLeaderboardEnabled, submitPass } from "./leaderboardClient";
+import { fetchLeaderboard, isLeaderboardEnabled, submitPass } from "./leaderboardClient";
 
 const payload = {
   profileId: "3f2a4b6c-1111-2222-3333-444455556666",
@@ -76,5 +76,52 @@ describe("when VITE_LEADERBOARD_API is configured", () => {
   it("does not throw when the server returns an error status", async () => {
     vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 500 } as Response);
     await expect(submitPass(payload)).resolves.toBeUndefined();
+  });
+
+  it("requests the leaderboard with no limit param when called with no argument, letting the server decide", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ entries: [] }),
+    } as Response);
+    await fetchLeaderboard();
+    const [url] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("/leaderboard");
+    expect(String(url)).not.toContain("limit=");
+  });
+
+  it("requests a specific limit when one is passed", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ entries: [] }),
+    } as Response);
+    await fetchLeaderboard(10);
+    const [url] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toContain("limit=10");
+  });
+
+  it("returns the entries array from the response body", async () => {
+    const entries = [
+      {
+        rank: 1,
+        displayName: "阿明",
+        entryPoint: "L1" as const,
+        depth: 9,
+        levelId: "L2-0",
+        reachedAt: "2026-08-21T10:00:00.000Z",
+      },
+    ];
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ entries }),
+    } as Response);
+    await expect(fetchLeaderboard()).resolves.toEqual(entries);
+  });
+
+  it("rejects when the server responds with a non-2xx status", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 500 } as Response);
+    await expect(fetchLeaderboard()).rejects.toThrow();
   });
 });
