@@ -1048,15 +1048,87 @@ export const L1_4: LevelSchema = {
 
 export const L2_0: LevelSchema = {
   id: "L2-0",
-  title: "syscall 沒有另一套規則",
+  title: "syscall 簽名怎麼讀",
   onPass: { advance: "L2-1" },
+  // Rebuilt from a single passive observation screen (the old version
+  // dumped all three write/open/read signatures + the open=1024 exception
+  // at once with judge:"none" throughout — same "one screen, no retrieval"
+  // pattern already fixed on L1-1..L1-4). Scope is deliberately narrower
+  // than cogload-review-L2.md's original "6-step memory bridge" proposal:
+  // that review predates L2-1's own rebuild, which already carries its own
+  // memoryVisual steps introducing `msg`/`la a1, msg` — duplicating that
+  // here would re-teach L2-1's content one level early. L2-0's only job
+  // (per the repo owner's explicit scope note) is the *notation* itself —
+  // `syscall(a7=編號, a0=..., a1=..., a2=...)` — using facts L1-2/L1-3
+  // already established (write's a7=64, a0=fd, a1=buf, a2=len), plus a
+  // one-line preview of the two syscalls L2-2's ORW relay needs later.
+  // open/read's actual argument mechanics (path, flags, buf mutation, fd
+  // handoff) stay out of scope — that's L2-2's job.
+  //
+  // 4-step sequence:
+  //   1. observation — reframe write's already-known register mapping as a
+  //      compact one-line notation, so the *shape* of `f(a7=.., a0=..)` is
+  //      what's new here, not the underlying facts.
+  //   2. fill-blank (direct) — one retrieval check that the learner can
+  //      transfer the notation to a syscall they haven't seen the mapping
+  //      spelled out for yet (read), inline in the signature line itself
+  //      via the same "{{blankId}}" convention FillBlankWidget already
+  //      renders asmLines with — not a fresh register-mechanics question.
+  //   3. observation — preview open's signature (+ the open=1024 cold
+  //      fact) and restate read's, explicitly deferring real usage to L2-2.
+  //   4. observation — bridge line matching L2-1's own opening sentence
+  //      verbatim, so the transition reads as continuous.
   steps: [
     {
       widgetType: "observation",
       judge: { kind: "none" },
-      title: "syscall 沒有另一套規則",
+      title: "把學過的規律濃縮成一行",
       prompt:
-        "直接借用 calling convention：`a7` 放服務編號，`a0`–`a6` 當參數：\n- `write(a7=64, a0=fd, a1=buf, a2=len)`\n- `open(a7=1024, a0=path, a1=flags)`\n- `read(a7=63, a0=fd, a1=buf, a2=len)`\n\n冷知識：`open` 的編號是 **1024**，不是常見 Linux 系統上的 `openat`（56）——rv32emu 的精簡 syscall table 只實作了 `open`，沒有 `openat`。",
+        "L1-2、L1-3 已經知道 `write` 怎麼呼叫：`a7=64`，`a0=fd`（印到螢幕填 `1`），`a1=buf`，`a2=len`。把這幾格寫成一行，就是這種簽名記法：`write(a7=64, a0=fd, a1=buf, a2=len)`。括號裡每個 `暫存器=角色`，講的都是同一件事，只是排成一行方便一次看完。",
+      registerContext: ["a7", "a0", "a1", "a2"],
+      registerLabels: {
+        a7: "64",
+        a0: "fd",
+        a1: "buf",
+        a2: "len",
+      },
+    },
+    {
+      widgetType: "fill-blank",
+      // judge:"direct" — this checks whether the notation itself transfers
+      // to a syscall the learner hasn't been walked through yet, not
+      // whether they can recall a new fact; no emulator run needed since
+      // nothing here executes real register-setting asm (read's actual
+      // buf/fd mechanics are L2-2's job). The signature line renders via
+      // asmLines' existing "{{blankId}}" inline-blank convention (same as
+      // L1-2/L1-3's asmLines), so the blank sits inside the signature
+      // itself instead of floating in a separate prose question.
+      judge: { kind: "direct" },
+      title: "同一招套用在別的 syscall 上",
+      prompt:
+        "`read` 也是同一種寫法，只是服務不同：`read(a7=63, a0=?, a1=buf, a2=len)`。位置代表的角色沒有變，`a0` 這格在這裡對應什麼？",
+      asmLines: ["read(a7=63, a0={{role}}, a1=buf, a2=len)"],
+      blanks: [
+        {
+          id: "role",
+          answer: "fd",
+          options: ["fd", "buf", "len", "服務編號"],
+        },
+      ],
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "接下來會用到的另外兩個簽名",
+      prompt:
+        "先眼熟就好，實際怎麼用留給 L2-2 的 ORW 接力：\n- `open(a7=1024, a0=path, a1=flags)`\n- `read(a7=63, a0=fd, a1=buf, a2=len)`\n\n冷知識：`open` 的編號是 **1024**，不是常見 Linux 系統上的 `openat`（56）。rv32emu 的 syscall table 很精簡，只實作了 `open`，沒有 `openat`。",
+    },
+    {
+      widgetType: "observation",
+      judge: { kind: "none" },
+      title: "準備寫出第一個真的會執行的 syscall",
+      prompt:
+        "`write` 的簽名已經確定：`write(a7=64, a0=fd, a1=buf, a2=len)`。`a7`／`a0` 這兩格接下來會直接幫你固定好，剩下 `a1`／`a2` 要換你自己填——下一關就動手，組出一段真的會印出東西的 shellcode。",
     },
   ],
 };
