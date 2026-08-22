@@ -30,6 +30,7 @@ known, deliberate difference from the TypeScript needs to be documented
 rather than silently left untested (the CORS preflight response shape).
 """
 
+from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import Mock
 
@@ -38,7 +39,7 @@ from fastapi.testclient import TestClient
 
 from src.app import app
 from src.leaderboard import queries
-from src.leaderboard.ranking import MAX_LIMIT
+from src.leaderboard.ranking import DEFAULT_LIMIT, MAX_LIMIT
 from src.leaderboard.schemas import ProgressInput
 
 client = TestClient(app)
@@ -151,6 +152,25 @@ class TestPostProgress:
         response = client.get("/api/leaderboard/progress")
         assert response.status_code == 405
 
+    def test_succeeds_even_when_event_start_is_malformed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The event date-range filter must affect GET /api/leaderboard
+        only. POST never touches EVENT_START/EVENT_END or
+        src.shared.event_window at all (see router.post_progress and
+        queries.record_progress), so a typo'd deploy variable must not
+        stop a real player's pass from being recorded mid-event.
+        """
+        monkeypatch.setenv("EVENT_START", "2026-08-22T09:00:00")  # no offset
+        mock_record = Mock(return_value=None)
+        monkeypatch.setattr(queries, "record_progress", mock_record)
+
+        response = client.post("/api/leaderboard/progress", json=VALID_BODY)
+
+        assert response.status_code == 200
+        assert response.json() == {"ok": True, "depth": 9}
+        mock_record.assert_called_once()
+
 
 class TestValidationHandlerSurvivesNonJsonBodies:
     """Fix round 1 regression coverage.
@@ -233,8 +253,6 @@ class TestGetLeaderboard:
     def test_returns_ranked_entries_without_a_profile_id(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from datetime import datetime, timezone
-
         from src.leaderboard.ranking import BestPassRow
 
         mock_fetch = Mock(
@@ -279,7 +297,12 @@ class TestGetLeaderboard:
         response = client.get("/api/leaderboard", params={"limit": "99999"})
 
         assert response.status_code == 200
-        mock_fetch.assert_called_once_with(MAX_LIMIT)
+        # start/end are the event date-range feature's bounds -- both None
+        # here since neither EVENT_START/EVENT_END nor ?from=/?to= is set
+        # (see TestGetLeaderboardDateWindow below for that feature's own
+        # coverage); this test's own job is still just pinning the limit
+        # clamp.
+        mock_fetch.assert_called_once_with(MAX_LIMIT, start=None, end=None)
 
     def test_returns_500_without_leaking_the_underlying_error(
         self, monkeypatch: pytest.MonkeyPatch
@@ -304,6 +327,179 @@ class TestGetLeaderboard:
     def test_refuses_a_post(self) -> None:
         response = client.post("/api/leaderboard")
         assert response.status_code == 405
+
+
+class TestGetLeaderboardDateWindow:
+    """The event date-range filter, as observed through GET
+    /api/leaderboard's HTTP boundary: EVENT_START/EVENT_END env vars, the
+    ?from=/?to= overrides, and their precedence. queries.fetch_best_passes
+    is mocked here exactly like every other test in TestGetLeaderboard --
+    these tests pin what the router computes and passes down, not the SQL
+    itself (see test_queries.py for that, and
+    tests/shared/test_event_window.py for the parsing/precedence rules in
+    isolation from FastAPI).
+    """
+
+    def test_neither_env_var_set_passes_no_bounds_to_the_query_layer(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mock_fetch = Mock(return_value=[])
+        monkeypatch.setattr(queries, "fetch_best_passes", mock_fetch)
+
+        response = client.get("/api/leaderboard")
+
+        assert response.status_code == 200
+        mock_fetch.assert_called_once_with(DEFAULT_LIMIT, start=None, end=None)
+
+    def test_only_event_start_set_passes_start_with_no_end(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("EVENT_START", "2026-08-22T00:00:00+08:00")
+        mock_fetch = Mock(return_value=[])
+        monkeypatch.setattr(queries, "fetch_best_passes", mock_fetch)
+
+        response = client.get("/api/leaderboard")
+
+        assert response.status_code == 200
+        mock_fetch.assert_called_once_with(
+            DEFAULT_LIMIT,
+            start=datetime.fromisoformat("2026-08-22T00:00:00+08:00"),
+            end=None,
+        )
+
+    def test_only_event_end_set_passes_end_with_no_start(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("EVENT_END", "2026-08-23T00:00:00+08:00")
+        mock_fetch = Mock(return_value=[])
+        monkeypatch.setattr(queries, "fetch_best_passes", mock_fetch)
+
+        response = client.get("/api/leaderboard")
+
+        assert response.status_code == 200
+        mock_fetch.assert_called_once_with(
+            DEFAULT_LIMIT,
+            start=None,
+            end=datetime.fromisoformat("2026-08-23T00:00:00+08:00"),
+        )
+
+    def test_both_env_vars_set_passes_both_bounds(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("EVENT_START", "2026-08-22T00:00:00+08:00")
+        monkeypatch.setenv("EVENT_END", "2026-08-23T00:00:00+08:00")
+        mock_fetch = Mock(return_value=[])
+        monkeypatch.setattr(queries, "fetch_best_passes", mock_fetch)
+
+        response = client.get("/api/leaderboard")
+
+        assert response.status_code == 200
+        mock_fetch.assert_called_once_with(
+            DEFAULT_LIMIT,
+            start=datetime.fromisoformat("2026-08-22T00:00:00+08:00"),
+            end=datetime.fromisoformat("2026-08-23T00:00:00+08:00"),
+        )
+
+    def test_query_from_overrides_event_start_while_event_end_still_applies(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("EVENT_START", "2020-01-01T00:00:00+08:00")
+        monkeypatch.setenv("EVENT_END", "2026-08-23T00:00:00+08:00")
+        mock_fetch = Mock(return_value=[])
+        monkeypatch.setattr(queries, "fetch_best_passes", mock_fetch)
+
+        response = client.get(
+            "/api/leaderboard", params={"from": "2026-08-22T12:00:00+08:00"}
+        )
+
+        assert response.status_code == 200
+        mock_fetch.assert_called_once_with(
+            DEFAULT_LIMIT,
+            start=datetime.fromisoformat("2026-08-22T12:00:00+08:00"),
+            end=datetime.fromisoformat("2026-08-23T00:00:00+08:00"),
+        )
+
+    def test_offset_less_query_from_is_rejected_with_400(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mock_fetch = Mock(return_value=[])
+        monkeypatch.setattr(queries, "fetch_best_passes", mock_fetch)
+
+        response = client.get(
+            "/api/leaderboard", params={"from": "2026-08-22T09:00:00"}
+        )
+
+        assert response.status_code == 400
+        assert response.json()["ok"] is False
+        mock_fetch.assert_not_called()
+
+    def test_offset_less_query_to_is_rejected_with_400(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mock_fetch = Mock(return_value=[])
+        monkeypatch.setattr(queries, "fetch_best_passes", mock_fetch)
+
+        response = client.get(
+            "/api/leaderboard", params={"to": "2026-08-22T09:00:00"}
+        )
+
+        assert response.status_code == 400
+        assert response.json()["ok"] is False
+        mock_fetch.assert_not_called()
+
+    def test_offset_less_event_start_returns_500_without_leaking_the_value(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("EVENT_START", "2026-08-22T09:00:00")  # no offset
+        mock_fetch = Mock(return_value=[])
+        monkeypatch.setattr(queries, "fetch_best_passes", mock_fetch)
+
+        response = client.get("/api/leaderboard")
+
+        assert response.status_code == 500
+        # Same generic body as every other 500 on this endpoint (rule 4:
+        # "the existing generic 500", not a bespoke one) -- and unlike the
+        # server-side log, it never contains the offending value.
+        assert response.json() == {"error": "internal error"}
+        assert "2026-08-22T09:00:00" not in response.text
+        mock_fetch.assert_not_called()
+
+    def test_offset_less_event_end_returns_500_without_leaking_the_value(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("EVENT_END", "2026-08-22T09:00:00")  # no offset
+        mock_fetch = Mock(return_value=[])
+        monkeypatch.setattr(queries, "fetch_best_passes", mock_fetch)
+
+        response = client.get("/api/leaderboard")
+
+        assert response.status_code == 500
+        assert response.json() == {"error": "internal error"}
+        assert "2026-08-22T09:00:00" not in response.text
+        mock_fetch.assert_not_called()
+
+    def test_malformed_event_start_overridden_by_query_from_does_not_fail(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Bonus: pins the deliberate "override replaces outright" design
+        in event_window.resolve_event_window -- a malformed EVENT_START
+        that a request overrides via ?from= is never even read, so it
+        cannot turn that request into a 500.
+        """
+        monkeypatch.setenv("EVENT_START", "not-a-timestamp-at-all")
+        mock_fetch = Mock(return_value=[])
+        monkeypatch.setattr(queries, "fetch_best_passes", mock_fetch)
+
+        response = client.get(
+            "/api/leaderboard", params={"from": "2026-08-22T12:00:00+08:00"}
+        )
+
+        assert response.status_code == 200
+        mock_fetch.assert_called_once_with(
+            DEFAULT_LIMIT,
+            start=datetime.fromisoformat("2026-08-22T12:00:00+08:00"),
+            end=None,
+        )
 
 
 class TestExactRoutePaths:
