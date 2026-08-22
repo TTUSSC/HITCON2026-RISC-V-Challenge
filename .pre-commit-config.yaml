@@ -29,3 +29,27 @@ repos:
         language: system
         files: ^frontend/.*\.(js|jsx|ts|tsx|css|json)$
         pass_filenames: false
+    -   id: frontend-test
+        name: frontend tests
+        entry: pnpm --dir frontend run test
+        language: system
+        # Scoped to the LEVEL_ORDER drift guard's own inputs, not all of
+        # frontend/src: the backend is Python now and can't import a .ts
+        # module to compare against the frontend's canonical `levels`
+        # directly, so frontend/src/engine/levels.drift.test.ts parses
+        # backend/src/shared/levels.py as text instead (see that test file
+        # and docs/superpowers/specs/2026-08-21-leaderboard-backend-design.md
+        # §6). Either copy changing — or the guard itself — needs this to run.
+        files: ^(frontend/src/engine/levels\.ts|frontend/src/engine/levels\.drift\.test\.ts|backend/src/shared/levels\.py)$
+        pass_filenames: false
+    -   id: backend-test
+        name: backend tests
+        entry: backend/.venv/bin/pytest -q -c backend/pyproject.toml
+        language: system
+        # The old `pnpm --dir backend run test` (vitest) is gone along with
+        # the rest of the TypeScript backend; this is now a pure-Python
+        # project. No longer matches frontend/src/engine/levels.ts -- the
+        # drift guard that used to justify that cross-reference lives in the
+        # frontend now (see the frontend-test hook above).
+        files: ^backend/.*\.py$
+        pass_filenames: false
